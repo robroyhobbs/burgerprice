@@ -22,7 +22,10 @@ const inter = Inter({
   display: "swap",
 });
 
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://burgerprice.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
   title: "Burger Price Index | The Financial Index for Burger Lovers",
   description:
     "Track burger prices across US cities with the BPI. Boston vs Seattle - who pays more for a burger? Weekly index updates, market reports, and the Burger of the Week.",
@@ -30,15 +33,24 @@ export const metadata: Metadata = {
     title: "Burger Price Index",
     description:
       "The Bloomberg Terminal of burgers. Track real burger prices across US cities.",
-    url: "https://burgerprice.com",
+    url: baseUrl,
     siteName: "Burger Price Index",
     type: "website",
+    images: [
+      {
+        url: "/api/og",
+        width: 1200,
+        height: 630,
+        alt: "Burger Price Index - Boston vs Seattle",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Burger Price Index",
     description:
       "The Bloomberg Terminal of burgers. Track real burger prices across US cities.",
+    images: ["/api/og"],
   },
 };
 
