@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateBpi, calculateChange, findExtremes } from "@/lib/bpi";
-import { researchBurgerPrices, generateMarketReport, generateSpotlight } from "@/lib/deepseek";
+import {
+  researchBurgerPrices,
+  generateMarketReport,
+  generateSpotlight,
+  generateIndustryNews,
+} from "@/lib/deepseek";
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -17,7 +22,10 @@ export async function GET(request: NextRequest) {
     // Get cities
     const { data: cities } = await supabase.from("cities").select("*");
     if (!cities || cities.length === 0) {
-      return NextResponse.json({ error: "No cities configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: "No cities configured" },
+        { status: 500 },
+      );
     }
 
     const weekOf = getMonday(new Date()).toISOString().split("T")[0];
@@ -57,7 +65,7 @@ export async function GET(request: NextRequest) {
 
       const changePct = calculateChange(
         bpiScore,
-        prevSnapshot ? Number(prevSnapshot.bpi_score) : null
+        prevSnapshot ? Number(prevSnapshot.bpi_score) : null,
       );
 
       // Insert snapshot
@@ -70,7 +78,10 @@ export async function GET(request: NextRequest) {
         cheapest_restaurant: extremes.cheapest.restaurant,
         most_expensive_price: extremes.mostExpensive.price,
         most_expensive_restaurant: extremes.mostExpensive.restaurant,
-        avg_price: Math.round((prices.reduce((s, p) => s + p.price, 0) / prices.length) * 100) / 100,
+        avg_price:
+          Math.round(
+            (prices.reduce((s, p) => s + p.price, 0) / prices.length) * 100,
+          ) / 100,
         sample_size: prices.length,
         raw_prices: prices,
       });
@@ -100,12 +111,26 @@ export async function GET(request: NextRequest) {
         seattleChange: null,
       });
 
-      await supabase.from("market_reports").upsert({
-        week_of: weekOf,
-        headline: report.headline,
-        summary: report.summary,
-        factors: report.factors,
-      }, { onConflict: "week_of" });
+      await supabase.from("market_reports").upsert(
+        {
+          week_of: weekOf,
+          headline: report.headline,
+          summary: report.summary,
+          factors: report.factors,
+        },
+        { onConflict: "week_of" },
+      );
+
+      // Generate industry news
+      const newsItems = await generateIndustryNews({
+        bostonBpi,
+        seattleBpi,
+        weekOf,
+      });
+
+      for (const item of newsItems) {
+        await supabase.from("industry_news").insert(item);
+      }
     }
 
     return NextResponse.json({
@@ -114,10 +139,7 @@ export async function GET(request: NextRequest) {
       results,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Collection failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Collection failed" }, { status: 500 });
   }
 }
 

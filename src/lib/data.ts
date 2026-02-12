@@ -1,8 +1,21 @@
-import type { DashboardData, CityDashboardData, BpiSnapshot, BurgerSpotlight, MarketReport, City } from "./types";
+import type {
+  DashboardData,
+  CityDashboardData,
+  BpiSnapshot,
+  BurgerSpotlight,
+  MarketReport,
+  IndustryNewsItem,
+  City,
+} from "./types";
 import { calculateBpi, calculateChange, findExtremes } from "./bpi";
 import {
-  WEEKS, BOSTON_PRICES, SEATTLE_PRICES,
-  BOSTON_SPOTLIGHTS, SEATTLE_SPOTLIGHTS, MARKET_REPORTS,
+  WEEKS,
+  BOSTON_PRICES,
+  SEATTLE_PRICES,
+  BOSTON_SPOTLIGHTS,
+  SEATTLE_SPOTLIGHTS,
+  MARKET_REPORTS,
+  INDUSTRY_NEWS,
 } from "./seed-data";
 
 const CITIES: City[] = [
@@ -33,7 +46,10 @@ function buildSeedSnapshots(citySlug: string): BpiSnapshot[] {
       cheapest_restaurant: extremes.cheapest.restaurant,
       most_expensive_price: extremes.mostExpensive.price,
       most_expensive_restaurant: extremes.mostExpensive.restaurant,
-      avg_price: Math.round((prices.reduce((s, p) => s + p.price, 0) / prices.length) * 100) / 100,
+      avg_price:
+        Math.round(
+          (prices.reduce((s, p) => s + p.price, 0) / prices.length) * 100,
+        ) / 100,
       sample_size: prices.length,
       raw_prices: prices,
       created_at: new Date().toISOString(),
@@ -46,7 +62,8 @@ function buildSeedSnapshots(citySlug: string): BpiSnapshot[] {
 }
 
 function buildSeedSpotlights(citySlug: string): BurgerSpotlight[] {
-  const spotlightMap = citySlug === "boston-ma" ? BOSTON_SPOTLIGHTS : SEATTLE_SPOTLIGHTS;
+  const spotlightMap =
+    citySlug === "boston-ma" ? BOSTON_SPOTLIGHTS : SEATTLE_SPOTLIGHTS;
   return WEEKS.map((week) => {
     const s = spotlightMap[week];
     if (!s) return null;
@@ -83,7 +100,7 @@ function buildSeedReports(): MarketReport[] {
 export async function getDashboardData(): Promise<DashboardData> {
   const hasSupabase = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
 
   if (hasSupabase) {
@@ -108,12 +125,26 @@ function getSeedDashboardData(): DashboardData {
     const previous = history.length >= 2 ? history[history.length - 2] : null;
     const spotlight = spotlights.find((s) => s.week_of === latestWeek) ?? null;
 
-    return { city, currentSnapshot: current, previousSnapshot: previous, spotlight, history };
+    return {
+      city,
+      currentSnapshot: current,
+      previousSnapshot: previous,
+      spotlight,
+      history,
+    };
   });
+
+  const seedNews: IndustryNewsItem[] = (INDUSTRY_NEWS[latestWeek] ?? []).map(
+    (n, i) => ({
+      ...n,
+      id: `news-${latestWeek}-${i}`,
+    }),
+  );
 
   return {
     cities,
     latestReport: reports.find((r) => r.week_of === latestWeek) ?? null,
+    news: seedNews,
     weekOf: latestWeek,
   };
 }
@@ -122,7 +153,10 @@ async function getSupabaseDashboardData(): Promise<DashboardData> {
   const { supabase } = await import("./supabase");
 
   // Get cities
-  const { data: citiesData } = await supabase.from("cities").select("*").order("name");
+  const { data: citiesData } = await supabase
+    .from("cities")
+    .select("*")
+    .order("name");
   if (!citiesData || citiesData.length === 0) return getSeedDashboardData();
 
   const cities: CityDashboardData[] = await Promise.all(
@@ -154,7 +188,7 @@ async function getSupabaseDashboardData(): Promise<DashboardData> {
         spotlight: (spotlightData as BurgerSpotlight) ?? null,
         history,
       };
-    })
+    }),
   );
 
   // Get latest report
@@ -165,11 +199,21 @@ async function getSupabaseDashboardData(): Promise<DashboardData> {
     .limit(1)
     .single();
 
-  const latestWeek = cities[0]?.currentSnapshot?.week_of ?? new Date().toISOString().split("T")[0];
+  const latestWeek =
+    cities[0]?.currentSnapshot?.week_of ??
+    new Date().toISOString().split("T")[0];
+
+  // Get industry news for latest week
+  const { data: newsData } = await supabase
+    .from("industry_news")
+    .select("*")
+    .eq("week_of", latestWeek)
+    .order("created_at", { ascending: true });
 
   return {
     cities,
     latestReport: (reportData as MarketReport) ?? null,
+    news: (newsData as IndustryNewsItem[]) ?? [],
     weekOf: latestWeek,
   };
 }

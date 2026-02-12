@@ -60,6 +60,17 @@ export interface Subscriber {
   subscribed_at: string;
 }
 
+export interface IndustryNewsItem {
+  id: string;
+  week_of: string;
+  title: string;
+  summary: string;
+  category: string;
+  source: string | null;
+  impact: "bullish" | "bearish" | "neutral";
+  created_at?: string;
+}
+
 // Combined data for the dashboard
 export interface CityDashboardData {
   city: City;
@@ -72,5 +83,6 @@ export interface CityDashboardData {
 export interface DashboardData {
   cities: CityDashboardData[];
   latestReport: MarketReport | null;
+  news: IndustryNewsItem[];
   weekOf: string;
 }

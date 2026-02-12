@@ -3,6 +3,7 @@ import { Header } from "@/components/header";
 import { CityShowdown } from "@/components/city-showdown";
 import { TrendChart } from "@/components/trend-chart";
 import { MarketReport } from "@/components/market-report";
+import { IndustryNews } from "@/components/industry-news";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { Footer } from "@/components/footer";
 
@@ -19,6 +20,7 @@ export default async function Home() {
         <CityShowdown cities={data.cities} />
         <TrendChart cities={data.cities} />
         <MarketReport report={data.latestReport} />
+        <IndustryNews news={data.news} />
         <NewsletterForm />
       </main>
       <Footer />

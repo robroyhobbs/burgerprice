@@ -1,4 +1,4 @@
-import type { RawPrice, MarketFactor } from "./types";
+import type { RawPrice, MarketFactor, IndustryNewsItem } from "./types";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -12,7 +12,7 @@ interface DeepSeekResponse {
 
 async function callDeepSeek(
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
 ): Promise<string> {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -50,7 +50,7 @@ async function callDeepSeek(
  */
 export async function researchBurgerPrices(
   city: string,
-  state: string
+  state: string,
 ): Promise<RawPrice[]> {
   const systemPrompt = `You are a burger price researcher. Return ONLY valid JSON.`;
 
@@ -81,11 +81,11 @@ Return as JSON: {"prices": [...]}`;
         price: Number(p.price) || 0,
         source: String(p.source || "research"),
         category: ["fast_food", "casual", "premium"].includes(
-          p.category as string
+          p.category as string,
         )
           ? (p.category as RawPrice["category"])
           : "casual",
-      })
+      }),
     );
 
     // Filter outliers
@@ -153,7 +153,7 @@ Include exactly 3 market factors.`;
 export async function generateSpotlight(
   city: string,
   state: string,
-  prices: RawPrice[]
+  prices: RawPrice[],
 ): Promise<{
   restaurantName: string;
   burgerName: string;
@@ -186,11 +186,70 @@ Pick the most interesting, best value, or most notable burger. Return JSON:
       restaurantName: String(parsed.restaurantName || "Unknown"),
       burgerName: String(parsed.burgerName || "Burger"),
       price: Number(parsed.price) || 0,
-      description: String(
-        parsed.description || "This week's top pick."
-      ),
+      description: String(parsed.description || "This week's top pick."),
     };
   } catch {
     throw new Error("Failed to parse DeepSeek spotlight response");
+  }
+}
+
+/**
+ * Generate industry news stories related to burger prices and the food industry.
+ */
+export async function generateIndustryNews(data: {
+  bostonBpi: number;
+  seattleBpi: number;
+  weekOf: string;
+}): Promise<Omit<IndustryNewsItem, "id" | "created_at">[]> {
+  const systemPrompt = `You are a financial news wire reporter covering the burger and food service industry. Write with the authority and style of Bloomberg or Reuters, but specifically about burgers, beef, and fast food. Mix real-world factors (USDA beef prices, supply chain, minimum wage, weather, seasonal demand, restaurant earnings) with the fun premise. Return ONLY valid JSON.`;
+
+  const userPrompt = `Generate 5 industry news briefs for the Burger Price Index newsletter for the week of ${data.weekOf}.
+
+Current BPI data:
+- Boston BPI: $${data.bostonBpi.toFixed(2)}
+- Seattle BPI: $${data.seattleBpi.toFixed(2)}
+
+Write stories across these categories (one each):
+1. "supply-chain" - Something about beef/ingredient prices, supply, or logistics
+2. "regulation" - Minimum wage, food safety, restaurant regulations
+3. "market" - Restaurant earnings, closures, openings, industry trends
+4. "consumer" - Consumer behavior, trends, preferences, seasonal patterns
+5. "wild-card" - An unexpected or humorous angle that's still plausible
+
+Each story should:
+- Have a punchy financial-news-style headline (title)
+- Be 2-3 sentences of summary in wire-service style
+- Reference real companies, agencies, or trends when possible
+- Indicate whether the story is bullish (prices likely to rise), bearish (prices likely to fall), or neutral for burger prices
+
+Return JSON:
+{
+  "stories": [
+    {
+      "title": "Headline here",
+      "summary": "2-3 sentence summary.",
+      "category": "supply-chain|regulation|market|consumer|wild-card",
+      "source": "Plausible source attribution (e.g., 'USDA Weekly Report', 'National Restaurant Association', 'Reuters')",
+      "impact": "bullish|bearish|neutral"
+    }
+  ]
+}`;
+
+  const raw = await callDeepSeek(systemPrompt, userPrompt);
+
+  try {
+    const parsed = JSON.parse(raw);
+    return (parsed.stories || []).map((s: Record<string, unknown>) => ({
+      week_of: data.weekOf,
+      title: String(s.title || "Industry Update"),
+      summary: String(s.summary || ""),
+      category: String(s.category || "market"),
+      source: s.source ? String(s.source) : null,
+      impact: (["bullish", "bearish", "neutral"].includes(s.impact as string)
+        ? s.impact
+        : "neutral") as IndustryNewsItem["impact"],
+    }));
+  } catch {
+    throw new Error("Failed to parse DeepSeek industry news response");
   }
 }

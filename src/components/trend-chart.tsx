@@ -1,13 +1,12 @@
 "use client";
 
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 import type { CityDashboardData } from "@/lib/types";
@@ -22,9 +21,9 @@ interface ChartDataPoint {
   [key: string]: string | number;
 }
 
-const CITY_COLORS: Record<string, string> = {
-  Boston: "#8B0000", // ketchup
-  Seattle: "#228B22", // lettuce
+const CITY_CONFIG: Record<string, { stroke: string; fill: string; label: string }> = {
+  Boston: { stroke: "#8B0000", fill: "#8B0000", label: "Boston, MA" },
+  Seattle: { stroke: "#228B22", fill: "#228B22", label: "Seattle, WA" },
 };
 
 export function TrendChart({ cities }: TrendChartProps) {
@@ -51,74 +50,141 @@ export function TrendChart({ cities }: TrendChartProps) {
 
   if (chartData.length === 0) return null;
 
+  // Calculate min/max for domain with padding
+  const allValues = chartData.flatMap((d) =>
+    cities.map((c) => Number(d[c.city.name]) || 0).filter((v) => v > 0),
+  );
+  const minVal = Math.floor(Math.min(...allValues) - 1);
+  const maxVal = Math.ceil(Math.max(...allValues) + 1);
+
   return (
     <section className="max-w-7xl mx-auto px-6 py-10">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-ketchup/10 dark:bg-mustard/10 flex items-center justify-center text-lg">
-          📈
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-ketchup/10 dark:bg-mustard/10 flex items-center justify-center text-lg">
+            📈
+          </div>
+          <div>
+            <h2 className="font-headline text-2xl text-ketchup dark:text-mustard leading-none">
+              BPI Trend
+            </h2>
+            <p className="text-xs text-gray-400 mt-1 bpi-number">
+              {chartData.length}-week price index history
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-headline text-2xl text-ketchup dark:text-mustard leading-none">
-            BPI Trend
-          </h2>
-          <p className="text-xs text-gray-400 mt-1 bpi-number">
-            {chartData.length}-week historical comparison
-          </p>
+
+        {/* Legend */}
+        <div className="hidden sm:flex items-center gap-5">
+          {cities.map((c) => {
+            const config = CITY_CONFIG[c.city.name];
+            return (
+              <div key={c.city.slug} className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: config?.stroke ?? "#888" }}
+                />
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  {config?.label ?? c.city.name}
+                </span>
+                {c.currentSnapshot && (
+                  <span className="bpi-number text-xs font-bold text-gray-700 dark:text-gray-200">
+                    ${c.currentSnapshot.bpi_score.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
       <div className="bg-white dark:bg-grill-light rounded-3xl border border-gray-200 dark:border-grill-lighter p-6 md:p-8">
-        <ResponsiveContainer width="100%" height={360}>
-          <LineChart
+        <ResponsiveContainer width="100%" height={380}>
+          <AreaChart
             data={chartData}
-            margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+            margin={{ top: 10, right: 10, bottom: 5, left: 10 }}
           >
+            <defs>
+              {cities.map((cityData) => {
+                const config = CITY_CONFIG[cityData.city.name];
+                const color = config?.fill ?? "#888";
+                return (
+                  <linearGradient
+                    key={cityData.city.slug}
+                    id={`gradient-${cityData.city.slug}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="5%" stopColor={color} stopOpacity={0.15} />
+                    <stop offset="95%" stopColor={color} stopOpacity={0.01} />
+                  </linearGradient>
+                );
+              })}
+            </defs>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke={isDark ? "#2E2E42" : "#E5E5E5"}
+              stroke={isDark ? "#2E2E42" : "#F0F0F0"}
+              vertical={false}
             />
             <XAxis
               dataKey="week"
-              tick={{ fontSize: 12, fill: isDark ? "#9CA3AF" : "#6B7280" }}
-              tickLine={{ stroke: isDark ? "#2E2E42" : "#D1D5DB" }}
-              axisLine={{ stroke: isDark ? "#2E2E42" : "#D1D5DB" }}
+              tick={{ fontSize: 12, fill: isDark ? "#6B7280" : "#9CA3AF" }}
+              tickLine={false}
+              axisLine={{ stroke: isDark ? "#2E2E42" : "#E5E5E5" }}
             />
             <YAxis
-              tick={{ fontSize: 12, fill: isDark ? "#9CA3AF" : "#6B7280" }}
-              tickLine={{ stroke: isDark ? "#2E2E42" : "#D1D5DB" }}
-              axisLine={{ stroke: isDark ? "#2E2E42" : "#D1D5DB" }}
+              tick={{ fontSize: 12, fill: isDark ? "#6B7280" : "#9CA3AF" }}
+              tickLine={false}
+              axisLine={false}
               tickFormatter={(v) => `$${v}`}
-              domain={["auto", "auto"]}
+              domain={[minVal, maxVal]}
+              width={50}
             />
             <Tooltip
               contentStyle={{
                 backgroundColor: isDark ? "#1E1E30" : "#FFFFFF",
-                border: `1px solid ${isDark ? "#2E2E42" : "#E5E5E5"}`,
-                borderRadius: "12px",
+                border: "none",
+                borderRadius: "16px",
                 fontSize: "13px",
-                padding: "12px 16px",
+                padding: "14px 18px",
                 color: isDark ? "#E5E5E5" : "#1A1A1A",
+                boxShadow: isDark
+                  ? "0 8px 32px rgba(0,0,0,0.5)"
+                  : "0 8px 32px rgba(0,0,0,0.1)",
               }}
               formatter={(value: number | undefined) =>
                 value != null ? [`$${value.toFixed(2)}`] : []
               }
+              cursor={{ stroke: isDark ? "#3A3A4E" : "#D1D5DB", strokeWidth: 1 }}
             />
-            <Legend wrapperStyle={{ fontSize: "13px", paddingTop: "16px" }} />
-            {cities.map((cityData) => (
-              <Line
-                key={cityData.city.slug}
-                type="monotone"
-                dataKey={cityData.city.name}
-                stroke={CITY_COLORS[cityData.city.name] ?? "#8B0000"}
-                strokeWidth={3}
-                dot={{
-                  r: 5,
-                  fill: CITY_COLORS[cityData.city.name] ?? "#8B0000",
-                }}
-                activeDot={{ r: 7 }}
-              />
-            ))}
-          </LineChart>
+            {cities.map((cityData) => {
+              const config = CITY_CONFIG[cityData.city.name];
+              return (
+                <Area
+                  key={cityData.city.slug}
+                  type="monotone"
+                  dataKey={cityData.city.name}
+                  stroke={config?.stroke ?? "#888"}
+                  strokeWidth={2.5}
+                  fill={`url(#gradient-${cityData.city.slug})`}
+                  dot={{
+                    r: 4,
+                    fill: isDark ? "#1E1E30" : "#FFFFFF",
+                    stroke: config?.stroke ?? "#888",
+                    strokeWidth: 2,
+                  }}
+                  activeDot={{
+                    r: 6,
+                    fill: config?.stroke ?? "#888",
+                    stroke: isDark ? "#1E1E30" : "#FFFFFF",
+                    strokeWidth: 2,
+                  }}
+                />
+              );
+            })}
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </section>
