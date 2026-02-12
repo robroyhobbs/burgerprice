@@ -1,9 +1,13 @@
 import { getDashboardData } from "@/lib/data";
 import { Header } from "@/components/header";
 import { CityShowdown } from "@/components/city-showdown";
+import { TrendChart } from "@/components/trend-chart";
+import { MarketReport } from "@/components/market-report";
+import { NewsletterForm } from "@/components/newsletter-form";
+import { Footer } from "@/components/footer";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 3600; // Revalidate every hour
+export const revalidate = 3600;
 
 export default async function Home() {
   const data = await getDashboardData();
@@ -13,7 +17,11 @@ export default async function Home() {
       <Header cities={data.cities} />
       <main>
         <CityShowdown cities={data.cities} />
+        <TrendChart cities={data.cities} />
+        <MarketReport report={data.latestReport} />
+        <NewsletterForm />
       </main>
+      <Footer />
     </div>
   );
 }
