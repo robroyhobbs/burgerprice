@@ -32,28 +32,28 @@ export function Header({ cities }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50">
       <TickerTape items={tickerItems} />
-      <div className="bg-paper/95 dark:bg-grill/95 backdrop-blur-md border-b border-gray-200 dark:border-grill-lighter">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-ketchup dark:bg-mustard rounded-lg flex items-center justify-center text-xl shadow-sm">
+      <div className="bg-paper/90 dark:bg-grill/90 backdrop-blur-xl border-b border-gray-200/60 dark:border-grill-lighter/60">
+        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-ketchup to-ketchup-light dark:from-mustard dark:to-mustard-light rounded-xl flex items-center justify-center text-2xl shadow-lg shadow-ketchup/20 dark:shadow-mustard/20">
               🍔
             </div>
             <div>
-              <h1 className="font-headline text-xl md:text-2xl text-ketchup dark:text-mustard leading-none tracking-wide">
+              <h1 className="font-headline text-2xl md:text-3xl text-ketchup dark:text-mustard leading-none">
                 BURGER PRICE INDEX
               </h1>
-              <p className="text-[9px] uppercase tracking-[0.25em] text-gray-400 dark:text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 tracking-wide">
                 Est. 2026 &middot; Boston &middot; Seattle
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline text-[10px] uppercase tracking-wider text-gray-400 bpi-number">
+          <div className="flex items-center gap-4">
+            <span className="hidden sm:inline text-xs text-gray-400 bpi-number">
               Week of Feb 10
             </span>
             <button
               onClick={toggleTheme}
-              className="w-9 h-9 rounded-lg border border-gray-200 dark:border-grill-lighter hover:bg-gray-100 dark:hover:bg-grill-light transition-colors flex items-center justify-center text-sm"
+              className="w-10 h-10 rounded-xl border border-gray-200 dark:border-grill-lighter hover:bg-gray-100 dark:hover:bg-grill-light transition-all flex items-center justify-center text-base"
               aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
             >
               {theme === "light" ? "🌙" : "☀️"}

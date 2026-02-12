@@ -15,7 +15,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-paper dark:bg-grill">
       <Header cities={data.cities} />
-      <main>
+      <main className="space-y-6 md:space-y-10">
         <CityShowdown cities={data.cities} />
         <TrendChart cities={data.cities} />
         <MarketReport report={data.latestReport} />

@@ -9,16 +9,16 @@
   --color-lettuce: #228B22;
   --color-lettuce-light: #32CD32;
   --color-negative: #DC143C;
-  --color-paper: #FAFAF5;
-  --color-paper-dark: #F5F5E8;
-  --color-grill: #1A1A2E;
-  --color-grill-light: #2A2A3E;
-  --color-grill-lighter: #3A3A4E;
+  --color-paper: #FAF9F6;
+  --color-paper-dark: #F2F0EB;
+  --color-grill: #141420;
+  --color-grill-light: #1E1E30;
+  --color-grill-lighter: #2E2E42;
 
   /* Font families */
-  --font-headline: "DM Serif Display", serif;
+  --font-headline: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-  --font-body: "Inter", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
 }
 
 /* Base styles */
@@ -26,12 +26,14 @@ body {
   font-family: var(--font-body);
   background-color: var(--color-paper);
   color: #1a1a1a;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
 }
 
 .dark body,
 .dark {
   background-color: var(--color-grill);
-  color: #e0e0e0;
+  color: #e5e5e5;
 }
 
 /* Financial number styling */
@@ -52,12 +54,13 @@ body {
 }
 
 .animate-ticker {
-  animation: ticker 30s linear infinite;
+  animation: ticker 40s linear infinite;
 }
 
 /* Headline font */
 .font-headline {
   font-family: var(--font-headline);
+  letter-spacing: -0.02em;
 }
 
 /* Subtle background texture */
@@ -65,4 +68,9 @@ body {
   background-image: radial-gradient(circle, #d4c89a 1px, transparent 1px);
   background-size: 30px 30px;
   opacity: 0.3;
+}
+
+/* Subtle grain overlay */
+.bg-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
 }

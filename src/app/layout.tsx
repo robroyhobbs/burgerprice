@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { DM_Serif_Display, JetBrains_Mono, Inter } from "next/font/google";
+import {
+  Space_Grotesk,
+  JetBrains_Mono,
+  Plus_Jakarta_Sans,
+} from "next/font/google";
 import "@/styles/globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const dmSerif = DM_Serif_Display({
-  weight: "400",
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-headline",
   display: "swap",
@@ -16,7 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const inter = Inter({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
@@ -62,7 +65,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSerif.variable} ${jetbrainsMono.variable} ${inter.variable}`}
+      className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${jakarta.variable}`}
       suppressHydrationWarning
     >
       <body className="antialiased">
