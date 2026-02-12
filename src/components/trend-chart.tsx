@@ -53,16 +53,21 @@ export function TrendChart({ cities }: TrendChartProps) {
 
   return (
     <section className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-headline text-xl text-ketchup dark:text-mustard">
-          BPI Trend
-        </h2>
-        <span className="text-xs text-gray-400 bpi-number">
-          {chartData.length}-week history
-        </span>
+      <div className="flex items-center gap-2 mb-5">
+        <div className="w-8 h-8 rounded-lg bg-ketchup/10 dark:bg-mustard/10 flex items-center justify-center text-sm">
+          📈
+        </div>
+        <div>
+          <h2 className="font-headline text-xl text-ketchup dark:text-mustard leading-none">
+            BPI Trend
+          </h2>
+          <p className="text-[10px] text-gray-400 mt-0.5 bpi-number">
+            {chartData.length}-week historical comparison
+          </p>
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-grill-light rounded-xl border border-gray-200 dark:border-grill-lighter p-4 md:p-6">
+      <div className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-4 md:p-6">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart
             data={chartData}

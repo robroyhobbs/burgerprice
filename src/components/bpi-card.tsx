@@ -12,83 +12,102 @@ export function BpiCard({ data, isWinner }: BpiCardProps) {
 
   if (!currentSnapshot) {
     return (
-      <div className="bg-white dark:bg-grill-light rounded-xl border border-gray-200 dark:border-grill-lighter p-6 flex-1">
+      <div className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-6 flex-1">
         <h2 className="font-headline text-xl text-gray-400">
           {city.name}, {city.state}
         </h2>
-        <p className="text-gray-400 mt-4">No data available</p>
+        <p className="text-gray-400 mt-4">Awaiting data...</p>
       </div>
     );
   }
 
   return (
     <div
-      className={`relative bg-white dark:bg-grill-light rounded-xl border-2 p-6 flex-1 transition-all ${
+      className={`relative bg-white dark:bg-grill-light rounded-2xl p-6 flex-1 transition-all ${
         isWinner
-          ? "border-mustard dark:border-mustard shadow-lg shadow-mustard/10"
-          : "border-gray-200 dark:border-grill-lighter"
+          ? "border-2 border-mustard shadow-xl shadow-mustard/5 dark:shadow-mustard/10"
+          : "border border-gray-200 dark:border-grill-lighter shadow-sm"
       }`}
     >
+      {/* Winner badge */}
       {isWinner && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-mustard text-grill text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full">
-          Higher BPI
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+          <div className="bg-gradient-to-r from-mustard to-mustard-light text-grill text-[10px] font-bold uppercase tracking-widest px-4 py-1 rounded-full shadow-md whitespace-nowrap">
+            Higher BPI
+          </div>
         </div>
       )}
 
-      {/* City Name */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-headline text-xl text-ketchup dark:text-mustard">
-          {city.name}, {city.state}
-        </h2>
-        <span className="text-xs text-gray-400 bpi-number">
-          Week of {formatDate(currentSnapshot.week_of)}
-        </span>
+      {/* City label */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="font-headline text-2xl text-ketchup dark:text-mustard leading-none">
+            {city.name}
+          </h2>
+          <span className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+            {city.state}
+          </span>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] text-gray-400 bpi-number block">
+            {formatDate(currentSnapshot.week_of)}
+          </span>
+          <span className="text-[10px] text-gray-300 dark:text-gray-600 bpi-number">
+            {currentSnapshot.sample_size} restaurants
+          </span>
+        </div>
       </div>
 
-      {/* BPI Score - The Hero Number */}
-      <div className="text-center mb-4">
-        <div className="bpi-number text-5xl md:text-6xl font-bold text-gray-900 dark:text-white">
+      {/* BPI Score */}
+      <div className="text-center py-4">
+        <div className="bpi-number text-5xl md:text-6xl font-bold text-gray-900 dark:text-white leading-none">
           ${currentSnapshot.bpi_score.toFixed(2)}
         </div>
-        <div className="mt-2">
+        <div className="mt-3">
           <TrendArrow change={currentSnapshot.change_pct} size="lg" />
         </div>
       </div>
 
-      {/* Price Range */}
-      <div className="grid grid-cols-2 gap-3 text-center">
-        <div className="bg-gray-50 dark:bg-grill rounded-lg p-2.5">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
+      {/* Price range bar */}
+      <div className="mt-4 mb-2">
+        <div className="flex justify-between text-[10px] text-gray-400 uppercase tracking-wider mb-2">
+          <span>Price Range</span>
+        </div>
+        <div className="relative h-2 bg-gray-100 dark:bg-grill rounded-full overflow-hidden">
+          <div
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-lettuce to-mustard to-negative rounded-full"
+            style={{ width: "100%" }}
+          />
+        </div>
+      </div>
+
+      {/* Cheapest / Most Expensive */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="text-center p-3 rounded-xl bg-lettuce/5 dark:bg-lettuce/10 border border-lettuce/10">
+          <div className="text-[9px] uppercase tracking-widest text-lettuce dark:text-lettuce-light font-medium mb-1">
             Cheapest
           </div>
-          <div className="bpi-number text-lg font-bold text-lettuce dark:text-lettuce-light">
+          <div className="bpi-number text-xl font-bold text-lettuce dark:text-lettuce-light">
             ${currentSnapshot.cheapest_price.toFixed(2)}
           </div>
-          <div className="text-[10px] text-gray-400 truncate" title={currentSnapshot.cheapest_restaurant}>
+          <div className="text-[10px] text-gray-400 truncate mt-0.5" title={currentSnapshot.cheapest_restaurant}>
             {currentSnapshot.cheapest_restaurant}
           </div>
         </div>
-        <div className="bg-gray-50 dark:bg-grill rounded-lg p-2.5">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Most Expensive
+        <div className="text-center p-3 rounded-xl bg-negative/5 dark:bg-negative/10 border border-negative/10">
+          <div className="text-[9px] uppercase tracking-widest text-negative dark:text-red-400 font-medium mb-1">
+            Priciest
           </div>
-          <div className="bpi-number text-lg font-bold text-negative dark:text-red-400">
+          <div className="bpi-number text-xl font-bold text-negative dark:text-red-400">
             ${currentSnapshot.most_expensive_price.toFixed(2)}
           </div>
-          <div className="text-[10px] text-gray-400 truncate" title={currentSnapshot.most_expensive_restaurant}>
+          <div className="text-[10px] text-gray-400 truncate mt-0.5" title={currentSnapshot.most_expensive_restaurant}>
             {currentSnapshot.most_expensive_restaurant}
           </div>
         </div>
       </div>
 
-      {/* Sample Size */}
-      <div className="text-center mt-3">
-        <span className="text-[10px] text-gray-400">
-          Based on {currentSnapshot.sample_size} restaurants surveyed
-        </span>
-      </div>
-
-      {/* Burger of the Week */}
+      {/* Spotlight */}
       <BurgerSpotlight spotlight={spotlight} />
     </div>
   );

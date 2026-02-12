@@ -14,23 +14,24 @@ export function CityShowdown({ cities }: CityShowdownProps) {
   const isTie = Math.abs(bpi1 - bpi2) < 0.01;
 
   return (
-    <section className="max-w-6xl mx-auto px-4 py-8">
-      {/* VS Badge */}
-      <div className="flex items-center justify-center mb-6">
-        <div className="h-px flex-1 bg-gray-200 dark:bg-grill-lighter" />
-        <span className="mx-4 text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-          City Showdown
-        </span>
-        <div className="h-px flex-1 bg-gray-200 dark:bg-grill-lighter" />
+    <section className="max-w-6xl mx-auto px-4 pt-10 pb-4">
+      {/* Section header */}
+      <div className="text-center mb-8">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500 mb-2">
+          Weekly Showdown
+        </p>
+        <h2 className="font-headline text-2xl md:text-3xl text-gray-900 dark:text-white">
+          {city1.city.name} <span className="text-gray-300 dark:text-gray-600 mx-2">vs</span> {city2.city.name}
+        </h2>
       </div>
 
       {/* Cards */}
-      <div className="flex flex-col md:flex-row gap-6 items-stretch">
+      <div className="flex flex-col lg:flex-row gap-6 items-stretch">
         <BpiCard data={city1} isWinner={!isTie && bpi1 > bpi2} />
 
-        {/* VS divider */}
-        <div className="flex items-center justify-center md:flex-col">
-          <div className="w-12 h-12 rounded-full bg-ketchup dark:bg-mustard flex items-center justify-center text-white font-headline text-lg shadow-lg">
+        {/* VS pill */}
+        <div className="flex items-center justify-center lg:flex-col shrink-0">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-ketchup to-ketchup-light dark:from-mustard dark:to-mustard-light flex items-center justify-center text-white font-headline text-lg shadow-lg shadow-ketchup/20 dark:shadow-mustard/20">
             VS
           </div>
         </div>
