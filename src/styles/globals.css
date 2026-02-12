@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  /* Burger Price Index Color Palette */
+  --color-ketchup: #8B0000;
+  --color-ketchup-light: #B22222;
+  --color-mustard: #DAA520;
+  --color-mustard-light: #F0C040;
+  --color-lettuce: #228B22;
+  --color-lettuce-light: #32CD32;
+  --color-negative: #DC143C;
+  --color-paper: #FAFAF5;
+  --color-paper-dark: #F5F5E8;
+  --color-grill: #1A1A2E;
+  --color-grill-light: #2A2A3E;
+  --color-grill-lighter: #3A3A4E;
+
+  /* Font families */
+  --font-headline: "DM Serif Display", serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-body: "Inter", sans-serif;
+}
+
+/* Base styles */
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-paper);
+  color: #1a1a1a;
+}
+
+.dark body,
+.dark {
+  background-color: var(--color-grill);
+  color: #e0e0e0;
+}
+
+/* Financial number styling */
+.bpi-number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Ticker tape animation */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  animation: ticker 30s linear infinite;
+}
+
+/* Headline font */
+.font-headline {
+  font-family: var(--font-headline);
+}
+
+/* Subtle background texture */
+.bg-sesame {
+  background-image: radial-gradient(circle, #d4c89a 1px, transparent 1px);
+  background-size: 30px 30px;
+  opacity: 0.3;
+}
