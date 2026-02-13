@@ -1,5 +1,6 @@
-import { getDashboardData } from "@/lib/data";
+import { getDashboardData, getNationalBpiHistory } from "@/lib/data";
 import { Header } from "@/components/header";
+import { NationalBpi } from "@/components/national-bpi";
 import { CityShowdown } from "@/components/city-showdown";
 import { Leaderboard } from "@/components/leaderboard";
 import { CandlestickChart } from "@/components/candlestick-chart";
@@ -13,6 +14,7 @@ export const revalidate = 3600;
 
 export default async function Home() {
   const data = await getDashboardData();
+  const nationalHistory = getNationalBpiHistory(data.cities);
 
   // Pick 2 showdown cities based on current week (deterministic rotation)
   const [idx1, idx2] = getShowdownIndices(data.weekOf, data.cities.length);
@@ -26,6 +28,7 @@ export default async function Home() {
     <div className="min-h-screen bg-paper dark:bg-grill">
       <Header cities={showdownCities} />
       <main className="space-y-6 md:space-y-10">
+        <NationalBpi history={nationalHistory} />
         <CityShowdown cities={showdownCities} />
         <Leaderboard cities={data.cities} />
         <CandlestickChart cities={trendCities} />

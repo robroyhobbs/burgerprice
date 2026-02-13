@@ -6,6 +6,8 @@ import type {
   MarketReport,
   IndustryNewsItem,
   City,
+  NationalBpiPoint,
+  SpreadEntry,
 } from "./types";
 import { calculateBpi, calculateChange, findExtremes } from "./bpi";
 import {
@@ -390,4 +392,73 @@ async function getSupabaseDashboardData(): Promise<DashboardData> {
     news: (newsData as IndustryNewsItem[]) ?? [],
     weekOf: latestWeek,
   };
+}
+
+/**
+ * Compute national BPI history: average BPI across all cities per week.
+ */
+export function getNationalBpiHistory(
+  cities: CityDashboardData[],
+): NationalBpiPoint[] {
+  const weekMap = new Map<string, { total: number; count: number }>();
+
+  for (const city of cities) {
+    for (const snap of city.history) {
+      const entry = weekMap.get(snap.week_of) ?? { total: 0, count: 0 };
+      entry.total += snap.bpi_score;
+      entry.count += 1;
+      weekMap.set(snap.week_of, entry);
+    }
+  }
+
+  return Array.from(weekMap.entries())
+    .map(([week_of, { total, count }]) => ({
+      week_of,
+      avg_bpi: Math.round((total / count) * 100) / 100,
+      city_count: count,
+    }))
+    .sort((a, b) => a.week_of.localeCompare(b.week_of));
+}
+
+/**
+ * Get the top 3 cheapest and top 3 most expensive burgers from the current week.
+ */
+export function getSpreadData(cities: CityDashboardData[]): {
+  cheapest: SpreadEntry[];
+  mostExpensive: SpreadEntry[];
+} {
+  const entries: { cheap: SpreadEntry; expensive: SpreadEntry }[] = [];
+
+  for (const c of cities) {
+    const snap = c.currentSnapshot;
+    if (!snap) continue;
+
+    entries.push({
+      cheap: {
+        city: c.city.name,
+        state: c.city.state,
+        restaurant: snap.cheapest_restaurant || "Unknown",
+        price: snap.cheapest_price,
+      },
+      expensive: {
+        city: c.city.name,
+        state: c.city.state,
+        restaurant: snap.most_expensive_restaurant || "Unknown",
+        price: snap.most_expensive_price,
+      },
+    });
+  }
+
+  const cheapest = entries
+    .map((e) => e.cheap)
+    .filter((e) => e.price > 0)
+    .sort((a, b) => a.price - b.price || a.city.localeCompare(b.city))
+    .slice(0, 3);
+
+  const mostExpensive = entries
+    .map((e) => e.expensive)
+    .sort((a, b) => b.price - a.price || a.city.localeCompare(b.city))
+    .slice(0, 3);
+
+  return { cheapest, mostExpensive };
 }

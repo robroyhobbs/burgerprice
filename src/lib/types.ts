@@ -124,6 +124,21 @@ export interface NewsletterEdition {
   created_at: string;
 }
 
+// National BPI data point
+export interface NationalBpiPoint {
+  week_of: string;
+  avg_bpi: number;
+  city_count: number;
+}
+
+// The Spread entry
+export interface SpreadEntry {
+  city: string;
+  state: string;
+  restaurant: string;
+  price: number;
+}
+
 // Combined data for the dashboard
 export interface CityDashboardData {
   city: City;
