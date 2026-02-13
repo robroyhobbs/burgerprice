@@ -1,4 +1,8 @@
-import { getDashboardData, getNationalBpiHistory } from "@/lib/data";
+import {
+  getDashboardData,
+  getNationalBpiHistory,
+  getSpreadData,
+} from "@/lib/data";
 import { Header } from "@/components/header";
 import { NationalBpi } from "@/components/national-bpi";
 import { CityShowdown } from "@/components/city-showdown";
@@ -7,6 +11,7 @@ import { CandlestickChart } from "@/components/candlestick-chart";
 import { MarketReport } from "@/components/market-report";
 import { IndustryNews } from "@/components/industry-news";
 import { NewsletterForm } from "@/components/newsletter-form";
+import { TheSpread } from "@/components/the-spread";
 import { Footer } from "@/components/footer";
 import { getShowdownIndices } from "@/lib/showdown";
 
@@ -15,6 +20,7 @@ export const revalidate = 3600;
 export default async function Home() {
   const data = await getDashboardData();
   const nationalHistory = getNationalBpiHistory(data.cities);
+  const spread = getSpreadData(data.cities);
 
   // Pick 2 showdown cities based on current week (deterministic rotation)
   const [idx1, idx2] = getShowdownIndices(data.weekOf, data.cities.length);
@@ -34,6 +40,10 @@ export default async function Home() {
         <CandlestickChart cities={trendCities} />
         <MarketReport report={data.latestReport} />
         <IndustryNews news={data.news} />
+        <TheSpread
+          cheapest={spread.cheapest}
+          mostExpensive={spread.mostExpensive}
+        />
         <NewsletterForm />
       </main>
       <Footer />
