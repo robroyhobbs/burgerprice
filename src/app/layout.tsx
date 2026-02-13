@@ -5,6 +5,7 @@ import {
   Plus_Jakarta_Sans,
 } from "next/font/google";
 import "@/styles/globals.css";
+import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 
 const spaceGrotesk = Space_Grotesk({
@@ -70,6 +71,7 @@ export default function RootLayout({
     >
       <body className="antialiased">
         <ThemeProvider>{children}</ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
