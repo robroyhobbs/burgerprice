@@ -181,6 +181,48 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Compute purchasing power
+    let ppStatus = "skipped";
+    if (collectedCities.length >= 1) {
+      try {
+        const { getAllWages } = await import("@/lib/wages");
+        const wages = getAllWages();
+
+        for (const cityData of collectedCities) {
+          const slug = `${cityData.name.toLowerCase().replace(/\s+/g, "-")}-${cityData.state.toLowerCase()}`;
+          const wage = wages[slug];
+          if (!wage || cityData.bpi <= 0) continue;
+
+          const burgersPerHour =
+            Math.round((wage.min_wage / cityData.bpi) * 100) / 100;
+
+          // Find city_id from cities table
+          const { data: cityRow } = await supabase
+            .from("cities")
+            .select("id")
+            .eq("slug", slug)
+            .single();
+
+          if (!cityRow) continue;
+
+          await supabase.from("purchasing_power").upsert(
+            {
+              city_id: cityRow.id,
+              week_of: weekOf,
+              min_wage: wage.min_wage,
+              avg_bpi: cityData.bpi,
+              burgers_per_hour: burgersPerHour,
+              wage_source: wage.source,
+            },
+            { onConflict: "city_id,week_of" },
+          );
+        }
+        ppStatus = "computed";
+      } catch {
+        ppStatus = "failed";
+      }
+    }
+
     // Generate newsletter if we have enough data
     let newsletterStatus = "skipped";
     if (collectedCities.length >= 2) {
@@ -233,6 +275,7 @@ export async function GET(request: NextRequest) {
       cities_collected: collectedCities.length,
       cities_total: cities.length,
       newsletter_status: newsletterStatus,
+      purchasing_power_status: ppStatus,
       results,
     });
   } catch {

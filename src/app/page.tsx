@@ -2,6 +2,7 @@ import {
   getDashboardData,
   getNationalBpiHistory,
   getSpreadData,
+  getPurchasingPower,
 } from "@/lib/data";
 import { Header } from "@/components/header";
 import { NationalBpi } from "@/components/national-bpi";
@@ -12,13 +13,17 @@ import { MarketReport } from "@/components/market-report";
 import { IndustryNews } from "@/components/industry-news";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { TheSpread } from "@/components/the-spread";
+import { PurchasingPower } from "@/components/purchasing-power";
 import { Footer } from "@/components/footer";
 import { getShowdownIndices } from "@/lib/showdown";
 
 export const revalidate = 3600;
 
 export default async function Home() {
-  const data = await getDashboardData();
+  const [data, purchasingPower] = await Promise.all([
+    getDashboardData(),
+    getPurchasingPower(),
+  ]);
   const nationalHistory = getNationalBpiHistory(data.cities);
   const spread = getSpreadData(data.cities);
 
@@ -44,6 +49,7 @@ export default async function Home() {
           cheapest={spread.cheapest}
           mostExpensive={spread.mostExpensive}
         />
+        <PurchasingPower data={purchasingPower} />
         <NewsletterForm />
       </main>
       <Footer />

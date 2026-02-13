@@ -8,6 +8,7 @@ import type {
   City,
   NationalBpiPoint,
   SpreadEntry,
+  PurchasingPowerEntry,
 } from "./types";
 import { calculateBpi, calculateChange, findExtremes } from "./bpi";
 import {
@@ -461,4 +462,52 @@ export function getSpreadData(cities: CityDashboardData[]): {
     .slice(0, 3);
 
   return { cheapest, mostExpensive };
+}
+
+/**
+ * Get purchasing power data for the latest week.
+ */
+export async function getPurchasingPower(): Promise<PurchasingPowerEntry[]> {
+  const hasSupabase = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+
+  if (!hasSupabase) return [];
+
+  try {
+    const { supabase } = await import("./supabase");
+
+    // Get latest week_of
+    const { data: latest } = await supabase
+      .from("purchasing_power")
+      .select("week_of")
+      .order("week_of", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!latest) return [];
+
+    const { data } = await supabase
+      .from("purchasing_power")
+      .select("*, cities!inner(name, state, slug)")
+      .eq("week_of", latest.week_of)
+      .order("burgers_per_hour", { ascending: false });
+
+    if (!data) return [];
+
+    return data.map((row: Record<string, unknown>) => {
+      const city = row.cities as { name: string; state: string; slug: string };
+      return {
+        city: city.name,
+        state: city.state,
+        slug: city.slug,
+        min_wage: Number(row.min_wage),
+        avg_bpi: Number(row.avg_bpi),
+        burgers_per_hour: Number(row.burgers_per_hour),
+      };
+    });
+  } catch {
+    return [];
+  }
 }

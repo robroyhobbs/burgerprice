@@ -131,6 +131,16 @@ export interface NationalBpiPoint {
   city_count: number;
 }
 
+// Purchasing power entry
+export interface PurchasingPowerEntry {
+  city: string;
+  state: string;
+  slug: string;
+  min_wage: number;
+  avg_bpi: number;
+  burgers_per_hour: number;
+}
+
 // The Spread entry
 export interface SpreadEntry {
   city: string;
