@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { TickerTape } from "./ui/ticker-tape";
 import { useTheme } from "./theme-provider";
 import type { CityDashboardData } from "@/lib/types";
@@ -54,13 +55,27 @@ export function Header({ cities }: HeaderProps) {
                 BURGER PRICE INDEX
               </h1>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 tracking-wide">
-                Est. 2026 &middot; Boston &middot; Seattle
+                Est. 2026 &middot; {cities.length} US Cities
               </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <nav className="hidden sm:flex items-center gap-4">
+              <Link
+                href="/cities"
+                className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-ketchup dark:hover:text-mustard transition-colors"
+              >
+                All Cities
+              </Link>
+              <Link
+                href="/about"
+                className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-ketchup dark:hover:text-mustard transition-colors"
+              >
+                About
+              </Link>
+            </nav>
             {weekLabel && (
-              <span className="hidden sm:inline text-xs text-gray-400 bpi-number">
+              <span className="hidden md:inline text-xs text-gray-400 bpi-number border-l border-gray-200 dark:border-grill-lighter pl-4">
                 {weekLabel}
               </span>
             )}
