@@ -1,8 +1,9 @@
 "use client";
 
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -227,7 +228,7 @@ export function CandlestickChart({ cities }: CandlestickChartProps) {
 
       <div className="bg-white dark:bg-grill-light rounded-3xl border border-gray-200 dark:border-grill-lighter p-6 md:p-8">
         <ResponsiveContainer width="100%" height={380}>
-          <BarChart
+          <ComposedChart
             data={chartData}
             margin={{ top: 10, right: 10, bottom: 5, left: 10 }}
             barCategoryGap="20%"
@@ -324,7 +325,34 @@ export function CandlestickChart({ cities }: CandlestickChartProps) {
                 isAnimationActive={false}
               />
             ))}
-          </BarChart>
+            {/* BPI trend line overlay */}
+            {cities.map((cityData, i) => {
+              const colors = getCityColors(i);
+              return (
+                <Line
+                  key={`line-${cityData.city.slug}`}
+                  type="monotone"
+                  dataKey={`${cityData.city.slug}_close`}
+                  stroke={isDark ? "#9CA3AF" : "#6B7280"}
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                  dot={{
+                    r: 3,
+                    fill: isDark ? "#1E1E30" : "#FFFFFF",
+                    stroke: colors.up,
+                    strokeWidth: 1.5,
+                  }}
+                  activeDot={{
+                    r: 5,
+                    fill: colors.up,
+                    stroke: isDark ? "#1E1E30" : "#FFFFFF",
+                    strokeWidth: 2,
+                  }}
+                  isAnimationActive={false}
+                />
+              );
+            })}
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </section>
