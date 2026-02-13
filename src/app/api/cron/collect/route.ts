@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { supabase } = await import("@/lib/supabase");
+    const { supabaseAdmin: supabase } = await import("@/lib/supabase-admin");
 
     // Get cities
     const { data: cities } = await supabase.from("cities").select("*");

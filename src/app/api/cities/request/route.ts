@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if this city is already tracked
-    const { supabase } = await import("@/lib/supabase");
+    // Check if this city is already tracked (use admin client for writes)
+    const { supabaseAdmin: supabase } = await import("@/lib/supabase-admin");
 
     const { data: existingCity } = await supabase
       .from("cities")
@@ -53,10 +53,16 @@ export async function POST(request: NextRequest) {
           const newCount = existing.request_count + 1;
           await supabase
             .from("city_requests")
-            .update({ request_count: newCount, updated_at: new Date().toISOString() })
+            .update({
+              request_count: newCount,
+              updated_at: new Date().toISOString(),
+            })
             .eq("id", existing.id);
 
-          return NextResponse.json({ requestCount: newCount, isTracked: false });
+          return NextResponse.json({
+            requestCount: newCount,
+            isTracked: false,
+          });
         }
       }
 
