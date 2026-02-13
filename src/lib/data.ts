@@ -175,34 +175,37 @@ export async function getAllCities(): Promise<CityDashboardData[]> {
   if (hasSupabase) {
     try {
       const { supabase } = await import("./supabase");
-      const { data: citiesData } = await supabase
-        .from("cities")
-        .select("*")
-        .order("name");
+      const [citiesRes, snapshotsRes] = await Promise.all([
+        supabase.from("cities").select("*").order("name"),
+        supabase
+          .from("bpi_snapshots")
+          .select("*")
+          .order("week_of", { ascending: true }),
+      ]);
+      const citiesData = citiesRes.data;
       if (!citiesData || citiesData.length === 0) return [];
 
-      return await Promise.all(
-        citiesData.map(async (city: City) => {
-          const { data: snapshots } = await supabase
-            .from("bpi_snapshots")
-            .select("*")
-            .eq("city_id", city.id)
-            .order("week_of", { ascending: true });
+      const snapshotsByCity = new Map<string, BpiSnapshot[]>();
+      for (const s of (snapshotsRes.data ?? []) as BpiSnapshot[]) {
+        const arr = snapshotsByCity.get(s.city_id) ?? [];
+        arr.push(s);
+        snapshotsByCity.set(s.city_id, arr);
+      }
 
-          const history = (snapshots ?? []) as BpiSnapshot[];
-          const current = history[history.length - 1] ?? null;
-          const previous =
-            history.length >= 2 ? history[history.length - 2] : null;
+      return citiesData.map((city: City) => {
+        const history = snapshotsByCity.get(city.id) ?? [];
+        const current = history[history.length - 1] ?? null;
+        const previous =
+          history.length >= 2 ? history[history.length - 2] : null;
 
-          return {
-            city,
-            currentSnapshot: current,
-            previousSnapshot: previous,
-            spotlight: null,
-            history,
-          };
-        }),
-      );
+        return {
+          city,
+          currentSnapshot: current,
+          previousSnapshot: previous,
+          spotlight: null,
+          history,
+        };
+      });
     } catch {
       // fall through
     }
@@ -314,58 +317,67 @@ export async function getAllCitySlugs(): Promise<string[]> {
 async function getSupabaseDashboardData(): Promise<DashboardData> {
   const { supabase } = await import("./supabase");
 
-  // Get cities
+  // Fetch cities, all snapshots, all spotlights, report, and news in parallel
   const { data: citiesData } = await supabase
     .from("cities")
     .select("*")
     .order("name");
   if (!citiesData || citiesData.length === 0) return getSeedDashboardData();
 
-  const cities: CityDashboardData[] = await Promise.all(
-    citiesData.map(async (city: City) => {
-      // Get snapshots ordered by week
-      const { data: snapshots } = await supabase
-        .from("bpi_snapshots")
-        .select("*")
-        .eq("city_id", city.id)
-        .order("week_of", { ascending: true });
+  const [snapshotsRes, spotlightsRes, reportRes] = await Promise.all([
+    supabase
+      .from("bpi_snapshots")
+      .select("*")
+      .order("week_of", { ascending: true }),
+    supabase
+      .from("burger_spotlight")
+      .select("*")
+      .order("week_of", { ascending: false }),
+    supabase
+      .from("market_reports")
+      .select("*")
+      .order("week_of", { ascending: false })
+      .limit(1)
+      .single(),
+  ]);
 
-      const history = (snapshots ?? []) as BpiSnapshot[];
-      const current = history[history.length - 1] ?? null;
-      const previous = history.length >= 2 ? history[history.length - 2] : null;
+  const allSnapshots = (snapshotsRes.data ?? []) as BpiSnapshot[];
+  const allSpotlights = (spotlightsRes.data ?? []) as BurgerSpotlight[];
 
-      // Get latest spotlight
-      const { data: spotlightData } = await supabase
-        .from("burger_spotlight")
-        .select("*")
-        .eq("city_id", city.id)
-        .order("week_of", { ascending: false })
-        .limit(1)
-        .single();
+  // Group by city in-memory
+  const snapshotsByCity = new Map<string, BpiSnapshot[]>();
+  for (const s of allSnapshots) {
+    const arr = snapshotsByCity.get(s.city_id) ?? [];
+    arr.push(s);
+    snapshotsByCity.set(s.city_id, arr);
+  }
 
-      return {
-        city,
-        currentSnapshot: current,
-        previousSnapshot: previous,
-        spotlight: (spotlightData as BurgerSpotlight) ?? null,
-        history,
-      };
-    }),
-  );
+  const spotlightByCity = new Map<string, BurgerSpotlight>();
+  for (const s of allSpotlights) {
+    if (!spotlightByCity.has(s.city_id)) {
+      spotlightByCity.set(s.city_id, s);
+    }
+  }
 
-  // Get latest report
-  const { data: reportData } = await supabase
-    .from("market_reports")
-    .select("*")
-    .order("week_of", { ascending: false })
-    .limit(1)
-    .single();
+  const cities: CityDashboardData[] = citiesData.map((city: City) => {
+    const history = snapshotsByCity.get(city.id) ?? [];
+    const current = history[history.length - 1] ?? null;
+    const previous = history.length >= 2 ? history[history.length - 2] : null;
+
+    return {
+      city,
+      currentSnapshot: current,
+      previousSnapshot: previous,
+      spotlight: spotlightByCity.get(city.id) ?? null,
+      history,
+    };
+  });
 
   const latestWeek =
     cities[0]?.currentSnapshot?.week_of ??
     new Date().toISOString().split("T")[0];
 
-  // Get industry news for latest week
+  // Fetch news for the latest week
   const { data: newsData } = await supabase
     .from("industry_news")
     .select("*")
@@ -374,7 +386,7 @@ async function getSupabaseDashboardData(): Promise<DashboardData> {
 
   return {
     cities,
-    latestReport: (reportData as MarketReport) ?? null,
+    latestReport: (reportRes.data as MarketReport) ?? null,
     news: (newsData as IndustryNewsItem[]) ?? [],
     weekOf: latestWeek,
   };

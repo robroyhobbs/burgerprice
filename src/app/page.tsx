@@ -9,7 +9,6 @@ import { NewsletterForm } from "@/components/newsletter-form";
 import { Footer } from "@/components/footer";
 import { getShowdownIndices } from "@/lib/showdown";
 
-export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
 export default async function Home() {

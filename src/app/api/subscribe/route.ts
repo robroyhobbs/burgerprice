@@ -9,10 +9,11 @@ export async function POST(request: NextRequest) {
   const now = Date.now();
   const lastAttempt = rateLimitMap.get(ip) ?? 0;
 
-  if (now - lastAttempt < 20_000) { // 20 seconds between attempts
+  if (now - lastAttempt < 20_000) {
+    // 20 seconds between attempts
     return NextResponse.json(
       { error: "Too many requests. Please try again shortly." },
-      { status: 429 }
+      { status: 429 },
     );
   }
   rateLimitMap.set(ip, now);
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: "Invalid request body." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -32,24 +33,21 @@ export async function POST(request: NextRequest) {
 
   // Validate email
   if (!email || typeof email !== "string") {
-    return NextResponse.json(
-      { error: "Email is required." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Email is required." }, { status: 400 });
   }
 
   const trimmed = email.trim().toLowerCase();
   if (trimmed.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
     return NextResponse.json(
       { error: "Please enter a valid email address." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   // Check if Supabase is configured
   const hasSupabase = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
 
   if (!hasSupabase) {
@@ -61,9 +59,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { supabase } = await import("@/lib/supabase");
+    const { supabaseAdmin } = await import("@/lib/supabase-admin");
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("subscribers")
       .insert({ email: trimmed });
 
@@ -77,7 +75,7 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json(
         { error: "Failed to subscribe. Please try again." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -88,7 +86,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: "Service temporarily unavailable." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
