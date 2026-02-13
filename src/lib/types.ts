@@ -3,6 +3,16 @@ export interface City {
   name: string;
   state: string;
   slug: string;
+  lat: number | null;
+  lng: number | null;
+}
+
+export interface CityRequest {
+  id: string;
+  city: string;
+  state: string;
+  request_count: number;
+  status: "pending" | "approved" | "rejected";
 }
 
 export interface RawPrice {

@@ -19,8 +19,22 @@ import {
 } from "./seed-data";
 
 const CITIES: City[] = [
-  { id: "boston", name: "Boston", state: "MA", slug: "boston-ma" },
-  { id: "seattle", name: "Seattle", state: "WA", slug: "seattle-wa" },
+  {
+    id: "boston",
+    name: "Boston",
+    state: "MA",
+    slug: "boston-ma",
+    lat: 42.3601,
+    lng: -71.0589,
+  },
+  {
+    id: "seattle",
+    name: "Seattle",
+    state: "WA",
+    slug: "seattle-wa",
+    lat: 47.6062,
+    lng: -122.3321,
+  },
 ];
 
 function buildSeedSnapshots(citySlug: string): BpiSnapshot[] {
