@@ -82,6 +82,48 @@ export interface IndustryNewsItem {
   created_at?: string;
 }
 
+// Newsletter types
+export interface NewsletterTapeMover {
+  city: string;
+  direction: "up" | "down";
+  changePct: number;
+  commentary: string;
+}
+
+export interface NewsletterContent {
+  headline: string;
+  marketOverview: string;
+  theTape: NewsletterTapeMover[];
+  citySpotlight: {
+    city: string;
+    narrative: string;
+  };
+  burgerOfTheWeek: {
+    restaurant: string;
+    burger: string;
+    city: string;
+    price: number;
+    review: string;
+  };
+  theSpread: {
+    cheapest: { restaurant: string; city: string; price: number };
+    mostExpensive: { restaurant: string; city: string; price: number };
+    commentary: string;
+  };
+  analystsCorner: {
+    title: string;
+    essay: string;
+  };
+}
+
+export interface NewsletterEdition {
+  id: string;
+  week_of: string;
+  headline: string;
+  sections: NewsletterContent;
+  created_at: string;
+}
+
 // Combined data for the dashboard
 export interface CityDashboardData {
   city: City;

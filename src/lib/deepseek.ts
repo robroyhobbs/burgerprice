@@ -1,4 +1,9 @@
-import type { RawPrice, MarketFactor, IndustryNewsItem } from "./types";
+import type {
+  RawPrice,
+  MarketFactor,
+  IndustryNewsItem,
+  NewsletterContent,
+} from "./types";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
@@ -275,5 +280,179 @@ Return JSON:
     }));
   } catch {
     throw new Error("Failed to parse DeepSeek industry news response");
+  }
+}
+
+/**
+ * Generate a full weekly newsletter edition using DeepSeek.
+ * Returns structured content with all 6 sections in mockumentary financial style.
+ */
+export async function generateNewsletter(data: {
+  cities: Array<{
+    name: string;
+    state: string;
+    bpi: number;
+    change: number | null;
+    cheapest: { restaurant: string; price: number };
+    mostExpensive: { restaurant: string; price: number };
+  }>;
+  weekOf: string;
+  spotlightCity?: {
+    name: string;
+    burgerName: string;
+    restaurant: string;
+    price: number;
+  };
+}): Promise<NewsletterContent> {
+  const systemPrompt = `You are a seasoned financial analyst who covers the burger market with complete sincerity. You write for the Burger Price Index (BPI) weekly newsletter — imagine Bloomberg Terminal meets financial journalism, but about burgers. Your tone is deadpan serious. You never break character. The humor comes from treating burgers with the gravitas of equities and commodities. Use financial jargon naturally: "rallied", "corrected", "support levels", "bearish divergence", "sector rotation", etc. Return ONLY valid JSON.`;
+
+  const sorted = [...data.cities].sort((a, b) => b.bpi - a.bpi);
+  const movers = [...data.cities]
+    .filter((c) => c.change !== null)
+    .sort((a, b) => Math.abs(b.change!) - Math.abs(a.change!))
+    .slice(0, 5);
+
+  const avgBpi =
+    data.cities.reduce((s, c) => s + c.bpi, 0) / data.cities.length;
+
+  const nationalCheapest = data.cities.reduce((a, b) =>
+    a.cheapest.price < b.cheapest.price ? a : b,
+  );
+  const nationalExpensive = data.cities.reduce((a, b) =>
+    a.mostExpensive.price > b.mostExpensive.price ? a : b,
+  );
+
+  const cityLines = sorted
+    .map(
+      (c) =>
+        `- ${c.name}, ${c.state}: BPI $${c.bpi.toFixed(2)} (${c.change !== null ? `${c.change > 0 ? "+" : ""}${c.change.toFixed(1)}%` : "NEW"}) | Low: $${c.cheapest.price.toFixed(2)} (${c.cheapest.restaurant}) | High: $${c.mostExpensive.price.toFixed(2)} (${c.mostExpensive.restaurant})`,
+    )
+    .join("\n");
+
+  const moverLines = movers
+    .map(
+      (c) =>
+        `${c.name}: ${c.change! > 0 ? "+" : ""}${c.change!.toFixed(1)}% ($${c.bpi.toFixed(2)})`,
+    )
+    .join(", ");
+
+  const spotlightInfo = data.spotlightCity
+    ? `\nSpotlight suggestion: ${data.spotlightCity.name} — ${data.spotlightCity.restaurant}'s "${data.spotlightCity.burgerName}" at $${data.spotlightCity.price.toFixed(2)}`
+    : "";
+
+  const userPrompt = `Write the BPI Weekly Newsletter for the week of ${data.weekOf}.
+
+DATA:
+${cityLines}
+
+National Average BPI: $${avgBpi.toFixed(2)}
+Top movers: ${moverLines}
+National cheapest: $${nationalCheapest.cheapest.price.toFixed(2)} at ${nationalCheapest.cheapest.restaurant} (${nationalCheapest.name})
+National most expensive: $${nationalExpensive.mostExpensive.price.toFixed(2)} at ${nationalExpensive.mostExpensive.restaurant} (${nationalExpensive.name})${spotlightInfo}
+
+Return JSON with this EXACT structure:
+{
+  "headline": "Newsletter edition headline — punchy financial news style, max 100 chars",
+  "marketOverview": "2-3 paragraphs. Open with the big picture: national average movement, overall market direction. Then drill into regional trends. Use financial language seriously. Reference specific cities and prices.",
+  "theTape": [
+    {"city": "City Name", "direction": "up or down", "changePct": 2.5, "commentary": "One sentence of analyst commentary on this move"}
+  ],
+  "citySpotlight": {
+    "city": "Pick the most interesting city this week",
+    "narrative": "2-3 paragraphs deep dive on this city's burger market. Discuss price levels, notable restaurants, market positioning vs national average. Write like a research analyst covering a specific equity."
+  },
+  "burgerOfTheWeek": {
+    "restaurant": "Restaurant name",
+    "burger": "Burger name",
+    "city": "City",
+    "price": 12.99,
+    "review": "2-3 sentences. Write like a wine critic reviewing a vintage but about a burger. Note the price-to-quality ratio, market positioning, and whether it represents alpha."
+  },
+  "theSpread": {
+    "cheapest": {"restaurant": "${nationalCheapest.cheapest.restaurant}", "city": "${nationalCheapest.name}", "price": ${nationalCheapest.cheapest.price}},
+    "mostExpensive": {"restaurant": "${nationalExpensive.mostExpensive.restaurant}", "city": "${nationalExpensive.name}", "price": ${nationalExpensive.mostExpensive.price}},
+    "commentary": "2-3 sentences analyzing the spread between cheapest and most expensive. Discuss what this tells us about the national burger market, purchasing power, and regional economics."
+  },
+  "analystsCorner": {
+    "title": "A column title like 'On Bun Stability and Consumer Confidence'",
+    "essay": "2-3 paragraphs of tongue-in-cheek market analysis. Pick a theme (seasonality, regional convergence, fast food vs premium divergence, etc.) and analyze it with complete seriousness. Reference data from the cities. End with a market outlook."
+  }
+}
+
+Include 3-5 movers in theTape. All commentary should be deadpan financial analysis — never acknowledge the absurdity.`;
+
+  const raw = await callDeepSeek(systemPrompt, userPrompt);
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    // Validate required sections exist
+    const content: NewsletterContent = {
+      headline: String(parsed.headline || "BPI Weekly Market Report"),
+      marketOverview: String(
+        parsed.marketOverview || "Market data under review.",
+      ),
+      theTape: Array.isArray(parsed.theTape)
+        ? parsed.theTape.map((m: Record<string, unknown>) => ({
+            city: String(m.city || "Unknown"),
+            direction:
+              m.direction === "down" ? ("down" as const) : ("up" as const),
+            changePct: Number(m.changePct) || 0,
+            commentary: String(m.commentary || ""),
+          }))
+        : [],
+      citySpotlight: {
+        city: String(parsed.citySpotlight?.city || sorted[0]?.name || ""),
+        narrative: String(
+          parsed.citySpotlight?.narrative || "Analysis pending.",
+        ),
+      },
+      burgerOfTheWeek: {
+        restaurant: String(parsed.burgerOfTheWeek?.restaurant || "TBD"),
+        burger: String(parsed.burgerOfTheWeek?.burger || "House Burger"),
+        city: String(parsed.burgerOfTheWeek?.city || ""),
+        price: Number(parsed.burgerOfTheWeek?.price) || 0,
+        review: String(parsed.burgerOfTheWeek?.review || "Under review."),
+      },
+      theSpread: {
+        cheapest: {
+          restaurant: String(
+            parsed.theSpread?.cheapest?.restaurant ||
+              nationalCheapest.cheapest.restaurant,
+          ),
+          city: String(
+            parsed.theSpread?.cheapest?.city || nationalCheapest.name,
+          ),
+          price:
+            Number(parsed.theSpread?.cheapest?.price) ||
+            nationalCheapest.cheapest.price,
+        },
+        mostExpensive: {
+          restaurant: String(
+            parsed.theSpread?.mostExpensive?.restaurant ||
+              nationalExpensive.mostExpensive.restaurant,
+          ),
+          city: String(
+            parsed.theSpread?.mostExpensive?.city || nationalExpensive.name,
+          ),
+          price:
+            Number(parsed.theSpread?.mostExpensive?.price) ||
+            nationalExpensive.mostExpensive.price,
+        },
+        commentary: String(
+          parsed.theSpread?.commentary || "Spread analysis pending.",
+        ),
+      },
+      analystsCorner: {
+        title: String(
+          parsed.analystsCorner?.title || "Weekly Market Commentary",
+        ),
+        essay: String(parsed.analystsCorner?.essay || "Commentary pending."),
+      },
+    };
+
+    return content;
+  } catch {
+    throw new Error("Failed to parse DeepSeek newsletter response");
   }
 }
