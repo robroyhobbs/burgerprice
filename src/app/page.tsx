@@ -2,7 +2,7 @@ import { getDashboardData } from "@/lib/data";
 import { Header } from "@/components/header";
 import { CityShowdown } from "@/components/city-showdown";
 import { Leaderboard } from "@/components/leaderboard";
-import { TrendChart } from "@/components/trend-chart";
+import { CandlestickChart } from "@/components/candlestick-chart";
 import { MarketReport } from "@/components/market-report";
 import { IndustryNews } from "@/components/industry-news";
 import { NewsletterForm } from "@/components/newsletter-form";
@@ -20,7 +20,8 @@ export default async function Home() {
   const showdownCities = [data.cities[idx1], data.cities[idx2]].filter(Boolean);
 
   // For the trend chart, show the showdown pair
-  const trendCities = showdownCities.length >= 2 ? showdownCities : data.cities.slice(0, 2);
+  const trendCities =
+    showdownCities.length >= 2 ? showdownCities : data.cities.slice(0, 2);
 
   return (
     <div className="min-h-screen bg-paper dark:bg-grill">
@@ -28,7 +29,7 @@ export default async function Home() {
       <main className="space-y-6 md:space-y-10">
         <CityShowdown cities={showdownCities} />
         <Leaderboard cities={data.cities} />
-        <TrendChart cities={trendCities} />
+        <CandlestickChart cities={trendCities} />
         <MarketReport report={data.latestReport} />
         <IndustryNews news={data.news} />
         <NewsletterForm />

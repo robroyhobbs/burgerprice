@@ -1,4 +1,5 @@
-import type { CityDashboardData } from "@/lib/types";
+import type { CityDashboardData, RawPrice } from "@/lib/types";
+import { getRestaurantUrl } from "@/lib/restaurant-utils";
 import { TrendArrow } from "./ui/trend-arrow";
 import { BurgerSpotlight } from "./burger-spotlight";
 
@@ -7,8 +8,14 @@ interface BpiCardProps {
   isWinner: boolean;
 }
 
+function findWebsite(name: string, prices: RawPrice[]): string | null {
+  const match = prices.find((p) => p.restaurant === name && p.website);
+  return match?.website ?? null;
+}
+
 export function BpiCard({ data, isWinner }: BpiCardProps) {
   const { city, currentSnapshot, spotlight } = data;
+  const rawPrices = (currentSnapshot?.raw_prices ?? []) as RawPrice[];
 
   if (!currentSnapshot) {
     return (
@@ -90,8 +97,23 @@ export function BpiCard({ data, isWinner }: BpiCardProps) {
           <div className="bpi-number text-2xl font-bold text-lettuce dark:text-lettuce-light">
             ${currentSnapshot.cheapest_price.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-400 truncate mt-1" title={currentSnapshot.cheapest_restaurant}>
-            {currentSnapshot.cheapest_restaurant}
+          <div
+            className="text-xs truncate mt-1"
+            title={currentSnapshot.cheapest_restaurant}
+          >
+            <a
+              href={getRestaurantUrl(
+                currentSnapshot.cheapest_restaurant,
+                city.name,
+                city.state,
+                findWebsite(currentSnapshot.cheapest_restaurant, rawPrices),
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-lettuce dark:hover:text-lettuce-light transition-colors underline decoration-dotted underline-offset-2"
+            >
+              {currentSnapshot.cheapest_restaurant}
+            </a>
           </div>
         </div>
         <div className="text-center p-4 rounded-2xl bg-negative/5 dark:bg-negative/10 border border-negative/10">
@@ -101,19 +123,46 @@ export function BpiCard({ data, isWinner }: BpiCardProps) {
           <div className="bpi-number text-2xl font-bold text-negative dark:text-red-400">
             ${currentSnapshot.most_expensive_price.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-400 truncate mt-1" title={currentSnapshot.most_expensive_restaurant}>
-            {currentSnapshot.most_expensive_restaurant}
+          <div
+            className="text-xs truncate mt-1"
+            title={currentSnapshot.most_expensive_restaurant}
+          >
+            <a
+              href={getRestaurantUrl(
+                currentSnapshot.most_expensive_restaurant,
+                city.name,
+                city.state,
+                findWebsite(
+                  currentSnapshot.most_expensive_restaurant,
+                  rawPrices,
+                ),
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-negative dark:hover:text-red-400 transition-colors underline decoration-dotted underline-offset-2"
+            >
+              {currentSnapshot.most_expensive_restaurant}
+            </a>
           </div>
         </div>
       </div>
 
       {/* Spotlight */}
-      <BurgerSpotlight spotlight={spotlight} />
+      <BurgerSpotlight
+        spotlight={spotlight}
+        cityName={city.name}
+        cityState={city.state}
+        rawPrices={rawPrices}
+      />
     </div>
   );
 }
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }

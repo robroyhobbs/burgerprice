@@ -21,6 +21,7 @@ export interface RawPrice {
   price: number;
   source: string;
   category: "fast_food" | "casual" | "premium";
+  website?: string | null;
 }
 
 export interface BpiSnapshot {

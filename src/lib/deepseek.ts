@@ -67,6 +67,7 @@ For each, provide:
 - price: Price in USD (number only, no $ sign)
 - source: Where you found this price (e.g., "menu", "doordash", "website")
 - category: One of "fast_food", "casual", or "premium"
+- website: The restaurant's official website URL (e.g., "https://www.mcdonalds.com"). Use null if unknown.
 
 Return as JSON: {"prices": [...]}`;
 
@@ -85,6 +86,10 @@ Return as JSON: {"prices": [...]}`;
         )
           ? (p.category as RawPrice["category"])
           : "casual",
+        website:
+          typeof p.website === "string" && p.website.startsWith("http")
+            ? p.website
+            : null,
       }),
     );
 

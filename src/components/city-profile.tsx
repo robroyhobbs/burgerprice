@@ -1,7 +1,8 @@
 "use client";
 
 import type { CityDashboardData, RawPrice } from "@/lib/types";
-import { TrendChart } from "./trend-chart";
+import { getRestaurantUrl } from "@/lib/restaurant-utils";
+import { CandlestickChart } from "./candlestick-chart";
 import Link from "next/link";
 
 interface CityProfileProps {
@@ -11,7 +12,12 @@ interface CityProfileProps {
   totalCities: number;
 }
 
-export function CityProfile({ data, nationalAvg, rank, totalCities }: CityProfileProps) {
+export function CityProfile({
+  data,
+  nationalAvg,
+  rank,
+  totalCities,
+}: CityProfileProps) {
   const { city, currentSnapshot } = data;
   const bpi = currentSnapshot?.bpi_score ?? null;
   const change = currentSnapshot?.change_pct ?? null;
@@ -109,14 +115,19 @@ export function CityProfile({ data, nationalAvg, rank, totalCities }: CityProfil
               }`}
             >
               {city.name} is {Math.abs(diffFromNational)}%{" "}
-              {diffFromNational > 0 ? "above" : diffFromNational < 0 ? "below" : "at"} average
+              {diffFromNational > 0
+                ? "above"
+                : diffFromNational < 0
+                  ? "below"
+                  : "at"}{" "}
+              average
             </span>
           </div>
         </div>
       )}
 
       {/* Trend Chart */}
-      <TrendChart cities={[data]} />
+      <CandlestickChart cities={[data]} />
 
       {/* Restaurant Price Table */}
       {sortedPrices.length > 0 ? (
@@ -147,9 +158,19 @@ export function CityProfile({ data, nationalAvg, rank, totalCities }: CityProfil
                 key={`${p.restaurant}-${i}`}
                 className="grid grid-cols-[1fr_1fr_5rem_6rem] gap-2 px-6 py-3 border-b border-gray-50 dark:border-grill-lighter/50 last:border-b-0 items-center"
               >
-                <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                <a
+                  href={getRestaurantUrl(
+                    p.restaurant,
+                    city.name,
+                    city.state,
+                    p.website,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-gray-900 dark:text-white truncate hover:text-ketchup dark:hover:text-mustard transition-colors underline decoration-dotted underline-offset-2"
+                >
                   {p.restaurant}
-                </span>
+                </a>
                 <span className="text-sm text-gray-600 dark:text-gray-300 truncate">
                   {p.burger}
                 </span>
@@ -166,7 +187,11 @@ export function CityProfile({ data, nationalAvg, rank, totalCities }: CityProfil
                           : "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
                     }`}
                   >
-                    {p.category === "fast_food" ? "Fast" : p.category === "premium" ? "Premium" : "Casual"}
+                    {p.category === "fast_food"
+                      ? "Fast"
+                      : p.category === "premium"
+                        ? "Premium"
+                        : "Casual"}
                   </span>
                 </span>
               </div>
