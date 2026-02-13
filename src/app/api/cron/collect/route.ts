@@ -6,6 +6,7 @@ import {
   generateMarketReport,
   generateSpotlight,
   generateIndustryNews,
+  generateNewsletter,
 } from "@/lib/deepseek";
 
 function sleep(ms: number) {
@@ -40,6 +41,8 @@ export async function GET(request: NextRequest) {
       state: string;
       bpi: number;
       change: number | null;
+      cheapest: { restaurant: string; price: number };
+      mostExpensive: { restaurant: string; price: number };
     }> = [];
 
     for (const city of cities) {
@@ -122,6 +125,14 @@ export async function GET(request: NextRequest) {
           state: city.state,
           bpi: bpiScore,
           change: changePct,
+          cheapest: {
+            restaurant: extremes.cheapest.restaurant,
+            price: extremes.cheapest.price,
+          },
+          mostExpensive: {
+            restaurant: extremes.mostExpensive.restaurant,
+            price: extremes.mostExpensive.price,
+          },
         });
 
         // Revalidate city page
@@ -170,6 +181,48 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Generate newsletter if we have enough data
+    let newsletterStatus = "skipped";
+    if (collectedCities.length >= 2) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          // Check if newsletter already exists for this week
+          const { data: existingNl } = await supabase
+            .from("newsletters")
+            .select("id")
+            .eq("week_of", weekOf)
+            .single();
+
+          if (existingNl) {
+            newsletterStatus = "exists";
+            break;
+          }
+
+          const newsletter = await generateNewsletter({
+            cities: collectedCities,
+            weekOf,
+          });
+
+          await supabase.from("newsletters").insert({
+            week_of: weekOf,
+            headline: newsletter.headline,
+            sections: newsletter,
+          });
+
+          newsletterStatus = "generated";
+          revalidatePath("/newsletter");
+          break;
+        } catch {
+          if (attempt === 0) {
+            newsletterStatus = "retrying";
+            await sleep(1000);
+          } else {
+            newsletterStatus = "failed";
+          }
+        }
+      }
+    }
+
     // Revalidate homepage and cities index
     revalidatePath("/");
     revalidatePath("/cities");
@@ -179,6 +232,7 @@ export async function GET(request: NextRequest) {
       week_of: weekOf,
       cities_collected: collectedCities.length,
       cities_total: cities.length,
+      newsletter_status: newsletterStatus,
       results,
     });
   } catch {
