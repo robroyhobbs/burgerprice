@@ -68,6 +68,12 @@ export function Header({ cities }: HeaderProps) {
                 All Cities
               </Link>
               <Link
+                href="/newsletter"
+                className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-ketchup dark:hover:text-mustard transition-colors"
+              >
+                Newsletter
+              </Link>
+              <Link
                 href="/about"
                 className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-ketchup dark:hover:text-mustard transition-colors"
               >
