@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { CityDashboardData } from "@/lib/types";
+import { NearMeButton } from "./near-me";
+import { CityRequestForm } from "./city-request-form";
 
 interface CitiesIndexProps {
   cities: CityDashboardData[];
@@ -10,6 +13,8 @@ interface CitiesIndexProps {
 
 export function CitiesIndex({ cities }: CitiesIndexProps) {
   const [search, setSearch] = useState("");
+  const [nearestInfo, setNearestInfo] = useState<{ slug: string; distance: number } | null>(null);
+  const router = useRouter();
 
   // Sort by BPI descending, no-data cities last
   const ranked = [...cities]
@@ -22,15 +27,24 @@ export function CitiesIndex({ cities }: CitiesIndexProps) {
       `${c.city.name} ${c.city.state}`.toLowerCase().includes(search.toLowerCase()),
     );
 
+  function handleNearMeFound(slug: string, distance: number) {
+    setNearestInfo({ slug, distance });
+    router.push(`/cities/${slug}`);
+  }
+
   return (
     <section className="max-w-7xl mx-auto px-6 py-14">
       <div className="text-center mb-12">
         <h1 className="font-headline text-3xl md:text-5xl text-gray-900 dark:text-white mb-3">
           All Cities
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+        <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto mb-6">
           Compare burger prices across {cities.length} US cities. Click any city for a full price breakdown.
         </p>
+        <NearMeButton
+          cities={cities.map((c) => c.city)}
+          onFound={handleNearMeFound}
+        />
       </div>
 
       {/* Search */}
@@ -49,13 +63,18 @@ export function CitiesIndex({ cities }: CitiesIndexProps) {
         <p className="text-center text-gray-400 py-12">No cities found</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {ranked.map((item, index) => {
+          {ranked.map((item) => {
             const bpi = item.currentSnapshot?.bpi_score ?? null;
             const change = item.currentSnapshot?.change_pct ?? null;
-            const globalRank = cities
-              .filter((c) => c.currentSnapshot)
-              .sort((a, b) => (b.currentSnapshot?.bpi_score ?? 0) - (a.currentSnapshot?.bpi_score ?? 0))
-              .findIndex((c) => c.city.slug === item.city.slug) + 1;
+            const globalRank =
+              cities
+                .filter((c) => c.currentSnapshot)
+                .sort(
+                  (a, b) =>
+                    (b.currentSnapshot?.bpi_score ?? 0) -
+                    (a.currentSnapshot?.bpi_score ?? 0),
+                )
+                .findIndex((c) => c.city.slug === item.city.slug) + 1;
 
             return (
               <Link
@@ -100,6 +119,11 @@ export function CitiesIndex({ cities }: CitiesIndexProps) {
           })}
         </div>
       )}
+
+      {/* Request a City */}
+      <div className="mt-16">
+        <CityRequestForm />
+      </div>
     </section>
   );
 }

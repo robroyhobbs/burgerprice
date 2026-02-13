@@ -247,45 +247,45 @@ Add browser geolocation "Find burgers near me" on the cities index page. Client-
 
 #### Happy Path
 
-- [ ] "Near Me" button triggers browser geolocation permission prompt
-- [ ] After granting permission, nearest tracked city is highlighted/shown
-- [ ] Distance to nearest city displayed in miles
-- [ ] City request form submits city + state successfully
-- [ ] Duplicate request increments request_count (not new row)
-- [ ] Request response includes current requestCount and isTracked status
-- [ ] Request count shown on UI ("12/25 requests")
+- [x] "Near Me" button triggers browser geolocation permission prompt
+- [x] After granting permission, nearest tracked city is highlighted/shown
+- [x] Distance to nearest city displayed in miles
+- [x] City request form submits city + state successfully
+- [x] Duplicate request increments request_count (not new row)
+- [x] Request response includes current requestCount and isTracked status
+- [x] Request count shown on UI ("12/25 requests")
 
 #### Bad Path
 
-- [ ] Geolocation denied — show friendly fallback message, no crash
-- [ ] Geolocation timeout — show fallback after 5 seconds
-- [ ] City request with empty city name returns 400
-- [ ] City request with empty state returns 400
-- [ ] Requesting an already-tracked city returns { isTracked: true }
+- [x] Geolocation denied — show friendly fallback message, no crash
+- [x] Geolocation timeout — show fallback after 5 seconds
+- [x] City request with empty city name returns 400
+- [x] City request with empty state returns 400
+- [x] Requesting an already-tracked city returns { isTracked: true }
 
 #### Edge Cases
 
-- [ ] User exactly equidistant from 2 cities — picks one deterministically
-- [ ] User at extreme coordinates (Alaska, Hawaii) — finds nearest continental city
-- [ ] City request with leading/trailing whitespace — trimmed before insert
-- [ ] City name normalization (case-insensitive matching for duplicates)
+- [x] User exactly equidistant from 2 cities — picks one deterministically
+- [x] User at extreme coordinates (Alaska, Hawaii) — finds nearest continental city
+- [x] City request with leading/trailing whitespace — trimmed before insert
+- [x] City name normalization (case-insensitive matching for duplicates)
 
 #### Security
 
-- [ ] City request API rate-limited (prevent spam flooding)
-- [ ] City/state input sanitized — no SQL injection via Supabase client
-- [ ] Geolocation only used client-side, coordinates not sent to server
-- [ ] City request doesn't accept arbitrary fields (only city, state)
+- [x] City request API rate-limited (prevent spam flooding)
+- [x] City/state input sanitized — no SQL injection via Supabase client
+- [x] Geolocation only used client-side, coordinates not sent to server
+- [x] City request doesn't accept arbitrary fields (only city, state)
 
 #### Data Leak
 
-- [ ] User's geolocation coordinates never sent to backend or logged
-- [ ] City request API response doesn't leak internal IDs or other requests
+- [x] User's geolocation coordinates never sent to backend or logged
+- [x] City request API response doesn't leak internal IDs or other requests
 
 #### Data Damage
 
-- [ ] Concurrent requests for same city don't create duplicates (UNIQUE constraint)
-- [ ] request_count increment is atomic (uses SQL upsert, not read-then-write)
+- [x] Concurrent requests for same city don't create duplicates (UNIQUE constraint)
+- [x] request_count increment is atomic (uses SQL upsert, not read-then-write)
 
 ### E2E Gate
 
