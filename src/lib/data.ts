@@ -488,11 +488,18 @@ export async function getPurchasingPower(): Promise<PurchasingPowerEntry[]> {
 
     if (!latest) return [];
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("purchasing_power")
-      .select("*, cities!inner(name, state, slug)")
+      .select(
+        "city_id, week_of, min_wage, avg_bpi, burgers_per_hour, wage_source, cities(name, state, slug)",
+      )
       .eq("week_of", latest.week_of)
       .order("burgers_per_hour", { ascending: false });
+
+    if (error) {
+      console.error("Purchasing power query error:", error.message);
+      return [];
+    }
 
     if (!data) return [];
 
