@@ -11,20 +11,31 @@ interface HeaderProps {
 export function Header({ cities }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
 
+  const latestWeek = cities[0]?.currentSnapshot?.week_of;
+  const weekLabel = latestWeek
+    ? `Week of ${new Date(latestWeek + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+    : "";
+
   const tickerItems = cities.flatMap((c) => [
     {
       label: `${c.city.name} BPI`,
-      value: c.currentSnapshot ? `$${c.currentSnapshot.bpi_score.toFixed(2)}` : "—",
+      value: c.currentSnapshot
+        ? `$${c.currentSnapshot.bpi_score.toFixed(2)}`
+        : "—",
       change: c.currentSnapshot?.change_pct ?? null,
     },
     {
       label: `${c.city.name} Low`,
-      value: c.currentSnapshot ? `$${c.currentSnapshot.cheapest_price.toFixed(2)}` : "—",
+      value: c.currentSnapshot
+        ? `$${c.currentSnapshot.cheapest_price.toFixed(2)}`
+        : "—",
       change: null,
     },
     {
       label: `${c.city.name} High`,
-      value: c.currentSnapshot ? `$${c.currentSnapshot.most_expensive_price.toFixed(2)}` : "—",
+      value: c.currentSnapshot
+        ? `$${c.currentSnapshot.most_expensive_price.toFixed(2)}`
+        : "—",
       change: null,
     },
   ]);
@@ -48,9 +59,11 @@ export function Header({ cities }: HeaderProps) {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="hidden sm:inline text-xs text-gray-400 bpi-number">
-              Week of Feb 10
-            </span>
+            {weekLabel && (
+              <span className="hidden sm:inline text-xs text-gray-400 bpi-number">
+                {weekLabel}
+              </span>
+            )}
             <button
               onClick={toggleTheme}
               className="w-10 h-10 rounded-xl border border-gray-200 dark:border-grill-lighter hover:bg-gray-100 dark:hover:bg-grill-light transition-all flex items-center justify-center text-base"

@@ -99,10 +99,12 @@ Return as JSON: {"prices": [...]}`;
  * Generate weekly market report commentary using DeepSeek.
  */
 export async function generateMarketReport(data: {
-  bostonBpi: number;
-  bostonChange: number | null;
-  seattleBpi: number;
-  seattleChange: number | null;
+  cities: Array<{
+    name: string;
+    state: string;
+    bpi: number;
+    change: number | null;
+  }>;
 }): Promise<{
   headline: string;
   summary: string;
@@ -110,16 +112,31 @@ export async function generateMarketReport(data: {
 }> {
   const systemPrompt = `You are a financial analyst who exclusively covers the burger market. Write with the gravitas of a Wall Street analyst but about burgers. Mix real economic factors with humorous burger market analysis. Return ONLY valid JSON.`;
 
-  const userPrompt = `Write a weekly market report for the Burger Price Index.
+  const cityLines = data.cities
+    .map(
+      (c) =>
+        `- ${c.name}, ${c.state} BPI: $${c.bpi.toFixed(2)} (${c.change !== null ? `${c.change > 0 ? "+" : ""}${c.change.toFixed(1)}%` : "NEW"})`,
+    )
+    .join("\n");
+
+  const avgBpi =
+    data.cities.reduce((s, c) => s + c.bpi, 0) / data.cities.length;
+  const highest = data.cities.reduce((a, b) => (a.bpi > b.bpi ? a : b));
+  const lowest = data.cities.reduce((a, b) => (a.bpi < b.bpi ? a : b));
+
+  const userPrompt = `Write a weekly market report for the Burger Price Index, now tracking ${data.cities.length} US cities.
 
 Data this week:
-- Boston BPI: $${data.bostonBpi} (${data.bostonChange !== null ? `${data.bostonChange > 0 ? "+" : ""}${data.bostonChange}%` : "NEW"} change)
-- Seattle BPI: $${data.seattleBpi} (${data.seattleChange !== null ? `${data.seattleChange > 0 ? "+" : ""}${data.seattleChange}%` : "NEW"} change)
+${cityLines}
+
+National average BPI: $${avgBpi.toFixed(2)}
+Most expensive: ${highest.name} ($${highest.bpi.toFixed(2)})
+Cheapest: ${lowest.name} ($${lowest.bpi.toFixed(2)})
 
 Return JSON with:
 {
   "headline": "A punchy financial news headline about burgers (max 80 chars)",
-  "summary": "2-3 paragraph market summary mixing real factors (beef prices, inflation, seasonality, local events) with humorous burger market analysis. Straight-faced financial reporting tone.",
+  "summary": "2-3 paragraph market summary mixing real factors (beef prices, inflation, seasonality, local events, regional differences) with humorous burger market analysis. Straight-faced financial reporting tone. Reference specific cities and their rankings.",
   "factors": [
     {"factor": "Factor Name", "impact": "up|down|neutral", "description": "Brief explanation"}
   ]
@@ -197,17 +214,19 @@ Pick the most interesting, best value, or most notable burger. Return JSON:
  * Generate industry news stories related to burger prices and the food industry.
  */
 export async function generateIndustryNews(data: {
-  bostonBpi: number;
-  seattleBpi: number;
+  cities: Array<{ name: string; state: string; bpi: number }>;
   weekOf: string;
 }): Promise<Omit<IndustryNewsItem, "id" | "created_at">[]> {
   const systemPrompt = `You are a financial news wire reporter covering the burger and food service industry. Write with the authority and style of Bloomberg or Reuters, but specifically about burgers, beef, and fast food. Mix real-world factors (USDA beef prices, supply chain, minimum wage, weather, seasonal demand, restaurant earnings) with the fun premise. Return ONLY valid JSON.`;
 
+  const cityLines = data.cities
+    .map((c) => `- ${c.name}, ${c.state} BPI: $${c.bpi.toFixed(2)}`)
+    .join("\n");
+
   const userPrompt = `Generate 5 industry news briefs for the Burger Price Index newsletter for the week of ${data.weekOf}.
 
-Current BPI data:
-- Boston BPI: $${data.bostonBpi.toFixed(2)}
-- Seattle BPI: $${data.seattleBpi.toFixed(2)}
+Current BPI data across ${data.cities.length} cities:
+${cityLines}
 
 Write stories across these categories (one each):
 1. "supply-chain" - Something about beef/ingredient prices, supply, or logistics

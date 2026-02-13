@@ -335,41 +335,41 @@ Update the weekly cron to collect data for all 10 cities (sequential). After col
 
 #### Happy Path
 
-- [ ] Cron collects BPI data for all 10 cities sequentially
-- [ ] Each city gets a new bpi_snapshot row with correct week_of
-- [ ] Market report generated with data from all cities
-- [ ] Industry news still generated after collection
-- [ ] revalidatePath called for each city page after data insert
-- [ ] Cron completes within Vercel function timeout (60s for hobby, 300s for pro)
+- [x] Cron collects BPI data for all 10 cities sequentially
+- [x] Each city gets a new bpi_snapshot row with correct week_of
+- [x] Market report generated with data from all cities
+- [x] Industry news still generated after collection
+- [x] revalidatePath called for each city page after data insert
+- [x] Cron completes within Vercel function timeout (60s for hobby, 300s for pro)
 
 #### Bad Path
 
-- [ ] Cron skips cities that already have data for current week
-- [ ] DeepSeek failure for one city doesn't stop collection of remaining cities
-- [ ] Cron returns partial results when some cities fail
-- [ ] Invalid DeepSeek response (empty prices) handled gracefully
+- [x] Cron skips cities that already have data for current week
+- [x] DeepSeek failure for one city doesn't stop collection of remaining cities
+- [x] Cron returns partial results when some cities fail
+- [x] Invalid DeepSeek response (empty prices) handled gracefully
 
 #### Edge Cases
 
-- [ ] First collection for a new city (no previous week to compare)
-- [ ] All 10 cities already collected — cron returns all -1 (skipped)
-- [ ] Cron runs on a non-Monday (week_of still calculates to Monday)
+- [x] First collection for a new city (no previous week to compare)
+- [x] All 10 cities already collected — cron returns all -1 (skipped)
+- [x] Cron runs on a non-Monday (week_of still calculates to Monday)
 
 #### Security
 
-- [ ] Cron endpoint still requires Bearer token authorization
-- [ ] CRON_SECRET not logged or exposed in response
+- [x] Cron endpoint still requires Bearer token authorization
+- [x] CRON_SECRET not logged or exposed in response
 
 #### Data Leak
 
-- [ ] Cron response doesn't include raw prices or DeepSeek prompts
-- [ ] Error messages don't expose API keys
+- [x] Cron response doesn't include raw prices or DeepSeek prompts
+- [x] Error messages don't expose API keys
 
 #### Data Damage
 
-- [ ] Each city insert is independent — one failure doesn't roll back others
-- [ ] Duplicate prevention via week_of + city_id uniqueness check
-- [ ] BPI score calculated correctly for cities with different restaurant counts
+- [x] Each city insert is independent — one failure doesn't roll back others
+- [x] Duplicate prevention via week_of + city_id uniqueness check
+- [x] BPI score calculated correctly for cities with different restaurant counts
 
 ### E2E Gate
 

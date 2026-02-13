@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { calculateBpi, calculateChange, findExtremes } from "@/lib/bpi";
 import {
   researchBurgerPrices,
@@ -6,6 +7,10 @@ import {
   generateSpotlight,
   generateIndustryNews,
 } from "@/lib/deepseek";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -30,115 +35,152 @@ export async function GET(request: NextRequest) {
 
     const weekOf = getMonday(new Date()).toISOString().split("T")[0];
     const results: Record<string, number> = {};
+    const collectedCities: Array<{
+      name: string;
+      state: string;
+      bpi: number;
+      change: number | null;
+    }> = [];
 
     for (const city of cities) {
-      // Check if already collected this week
-      const { data: existing } = await supabase
-        .from("bpi_snapshots")
-        .select("id")
-        .eq("city_id", city.id)
-        .eq("week_of", weekOf)
-        .single();
+      try {
+        // Check if already collected this week
+        const { data: existing } = await supabase
+          .from("bpi_snapshots")
+          .select("id")
+          .eq("city_id", city.id)
+          .eq("week_of", weekOf)
+          .single();
 
-      if (existing) {
-        results[city.slug] = -1; // Already exists
-        continue;
-      }
+        if (existing) {
+          results[city.slug] = -1; // Already exists
+          continue;
+        }
 
-      // Research prices
-      const prices = await researchBurgerPrices(city.name, city.state);
-      if (prices.length === 0) continue;
+        // Research prices
+        const prices = await researchBurgerPrices(city.name, city.state);
+        if (prices.length === 0) {
+          results[city.slug] = 0; // No prices returned
+          continue;
+        }
 
-      // Calculate BPI
-      const bpiScore = calculateBpi(prices);
-      const extremes = findExtremes(prices);
+        // Calculate BPI
+        const bpiScore = calculateBpi(prices);
+        const extremes = findExtremes(prices);
 
-      // Get previous week's BPI for change calculation
-      const { data: prevSnapshot } = await supabase
-        .from("bpi_snapshots")
-        .select("bpi_score")
-        .eq("city_id", city.id)
-        .lt("week_of", weekOf)
-        .order("week_of", { ascending: false })
-        .limit(1)
-        .single();
+        // Get previous week's BPI for change calculation
+        const { data: prevSnapshot } = await supabase
+          .from("bpi_snapshots")
+          .select("bpi_score")
+          .eq("city_id", city.id)
+          .lt("week_of", weekOf)
+          .order("week_of", { ascending: false })
+          .limit(1)
+          .single();
 
-      const changePct = calculateChange(
-        bpiScore,
-        prevSnapshot ? Number(prevSnapshot.bpi_score) : null,
-      );
+        const changePct = calculateChange(
+          bpiScore,
+          prevSnapshot ? Number(prevSnapshot.bpi_score) : null,
+        );
 
-      // Insert snapshot
-      await supabase.from("bpi_snapshots").insert({
-        city_id: city.id,
-        week_of: weekOf,
-        bpi_score: bpiScore,
-        change_pct: changePct,
-        cheapest_price: extremes.cheapest.price,
-        cheapest_restaurant: extremes.cheapest.restaurant,
-        most_expensive_price: extremes.mostExpensive.price,
-        most_expensive_restaurant: extremes.mostExpensive.restaurant,
-        avg_price:
-          Math.round(
-            (prices.reduce((s, p) => s + p.price, 0) / prices.length) * 100,
-          ) / 100,
-        sample_size: prices.length,
-        raw_prices: prices,
-      });
-
-      // Generate spotlight
-      const spotlight = await generateSpotlight(city.name, city.state, prices);
-      await supabase.from("burger_spotlight").insert({
-        city_id: city.id,
-        week_of: weekOf,
-        ...spotlight,
-        restaurant_name: spotlight.restaurantName,
-        burger_name: spotlight.burgerName,
-      });
-
-      results[city.slug] = bpiScore;
-    }
-
-    // Generate market report
-    const bostonBpi = results["boston-ma"] ?? 0;
-    const seattleBpi = results["seattle-wa"] ?? 0;
-
-    if (bostonBpi > 0 && seattleBpi > 0) {
-      const report = await generateMarketReport({
-        bostonBpi,
-        bostonChange: null, // Could calculate from previous
-        seattleBpi,
-        seattleChange: null,
-      });
-
-      await supabase.from("market_reports").upsert(
-        {
+        // Insert snapshot
+        await supabase.from("bpi_snapshots").insert({
+          city_id: city.id,
           week_of: weekOf,
-          headline: report.headline,
-          summary: report.summary,
-          factors: report.factors,
-        },
-        { onConflict: "week_of" },
-      );
+          bpi_score: bpiScore,
+          change_pct: changePct,
+          cheapest_price: extremes.cheapest.price,
+          cheapest_restaurant: extremes.cheapest.restaurant,
+          most_expensive_price: extremes.mostExpensive.price,
+          most_expensive_restaurant: extremes.mostExpensive.restaurant,
+          avg_price:
+            Math.round(
+              (prices.reduce((s, p) => s + p.price, 0) / prices.length) * 100,
+            ) / 100,
+          sample_size: prices.length,
+          raw_prices: prices,
+        });
 
-      // Generate industry news
-      const newsItems = await generateIndustryNews({
-        bostonBpi,
-        seattleBpi,
-        weekOf,
-      });
+        // Generate spotlight
+        const spotlight = await generateSpotlight(
+          city.name,
+          city.state,
+          prices,
+        );
+        await supabase.from("burger_spotlight").insert({
+          city_id: city.id,
+          week_of: weekOf,
+          ...spotlight,
+          restaurant_name: spotlight.restaurantName,
+          burger_name: spotlight.burgerName,
+        });
 
-      for (const item of newsItems) {
-        await supabase.from("industry_news").insert(item);
+        results[city.slug] = bpiScore;
+        collectedCities.push({
+          name: city.name,
+          state: city.state,
+          bpi: bpiScore,
+          change: changePct,
+        });
+
+        // Revalidate city page
+        revalidatePath(`/cities/${city.slug}`);
+
+        // Delay between cities to avoid DeepSeek rate limits
+        await sleep(2000);
+      } catch {
+        // One city failing doesn't stop the rest
+        results[city.slug] = -2; // Error
       }
     }
+
+    // Generate market report if we collected at least 2 cities
+    if (collectedCities.length >= 2) {
+      try {
+        const report = await generateMarketReport({
+          cities: collectedCities,
+        });
+
+        await supabase.from("market_reports").upsert(
+          {
+            week_of: weekOf,
+            headline: report.headline,
+            summary: report.summary,
+            factors: report.factors,
+          },
+          { onConflict: "week_of" },
+        );
+
+        // Generate industry news
+        const newsItems = await generateIndustryNews({
+          cities: collectedCities.map((c) => ({
+            name: c.name,
+            state: c.state,
+            bpi: c.bpi,
+          })),
+          weekOf,
+        });
+
+        for (const item of newsItems) {
+          await supabase.from("industry_news").insert(item);
+        }
+      } catch {
+        // Report/news generation failure is non-fatal
+      }
+    }
+
+    // Revalidate homepage and cities index
+    revalidatePath("/");
+    revalidatePath("/cities");
 
     return NextResponse.json({
       status: "collected",
       week_of: weekOf,
+      cities_collected: collectedCities.length,
+      cities_total: cities.length,
       results,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Collection failed" }, { status: 500 });
   }
 }
