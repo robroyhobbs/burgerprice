@@ -169,42 +169,42 @@ Create `/cities` index page with search and grid of city cards. Create `/cities/
 
 #### Happy Path
 
-- [ ] `/cities` renders grid of all 10 city cards with BPI, change, rank
-- [ ] `/cities/boston-ma` renders full city profile page
-- [ ] City hero shows name, state, BPI score, change %, national rank
-- [ ] Restaurant price table populated from raw_prices in latest snapshot
-- [ ] National average computed correctly across all cities
-- [ ] "vs National Avg" comparison shows percentage above/below
-- [ ] Single-city trend chart renders with that city's history
-- [ ] Search/filter on `/cities` filters city cards by name
+- [x] `/cities` renders grid of all 10 city cards with BPI, change, rank
+- [x] `/cities/boston-ma` renders full city profile page
+- [x] City hero shows name, state, BPI score, change %, national rank
+- [x] Restaurant price table populated from raw_prices in latest snapshot
+- [x] National average computed correctly across all cities
+- [x] "vs National Avg" comparison shows percentage above/below
+- [x] Single-city trend chart renders with that city's history
+- [x] Search/filter on `/cities` filters city cards by name
 
 #### Bad Path
 
-- [ ] `/cities/nonexistent-slug` returns 404 page
-- [ ] City page renders gracefully when no snapshots exist yet (new city)
-- [ ] City with empty raw_prices shows "No price data yet" message
-- [ ] Search with no results shows "No cities found" state
+- [x] `/cities/nonexistent-slug` returns 404 page
+- [x] City page renders gracefully when no snapshots exist yet (new city)
+- [x] City with empty raw_prices shows "No price data yet" message
+- [x] Search with no results shows "No cities found" state
 
 #### Edge Cases
 
-- [ ] City page works with only 1 week of history (no trend line, just a dot)
-- [ ] Restaurant table handles raw_prices with missing fields gracefully
-- [ ] `/cities` page works with 0 cities (shows empty state)
-- [ ] Long city names (e.g., "San Francisco") don't break card layout
+- [x] City page works with only 1 week of history (no trend line, just a dot)
+- [x] Restaurant table handles raw_prices with missing fields gracefully
+- [x] `/cities` page works with 0 cities (shows empty state)
+- [x] Long city names (e.g., "San Francisco") don't break card layout
 
 #### Security
 
-- [ ] City slugs are validated — no path traversal via slug parameter
-- [ ] Static generation doesn't expose build-time env vars
+- [x] City slugs are validated — no path traversal via slug parameter
+- [x] Static generation doesn't expose build-time env vars
 
 #### Data Leak
 
-- [ ] City pages don't expose internal city_id UUIDs in HTML
-- [ ] Raw API responses not embedded in page source beyond what's displayed
+- [x] City pages don't expose internal city_id UUIDs in HTML
+- [x] Raw API responses not embedded in page source beyond what's displayed
 
 #### Data Damage
 
-- [ ] City pages are read-only — no mutation endpoints or forms on these pages
+- [x] City pages are read-only — no mutation endpoints or forms on these pages
 
 ### E2E Gate
 

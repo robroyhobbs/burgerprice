@@ -163,6 +163,154 @@ function getSeedDashboardData(): DashboardData {
   };
 }
 
+/**
+ * Get all cities with their latest BPI data (for cities index and leaderboard).
+ */
+export async function getAllCities(): Promise<CityDashboardData[]> {
+  const hasSupabase = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+
+  if (hasSupabase) {
+    try {
+      const { supabase } = await import("./supabase");
+      const { data: citiesData } = await supabase
+        .from("cities")
+        .select("*")
+        .order("name");
+      if (!citiesData || citiesData.length === 0) return [];
+
+      return await Promise.all(
+        citiesData.map(async (city: City) => {
+          const { data: snapshots } = await supabase
+            .from("bpi_snapshots")
+            .select("*")
+            .eq("city_id", city.id)
+            .order("week_of", { ascending: true });
+
+          const history = (snapshots ?? []) as BpiSnapshot[];
+          const current = history[history.length - 1] ?? null;
+          const previous =
+            history.length >= 2 ? history[history.length - 2] : null;
+
+          return {
+            city,
+            currentSnapshot: current,
+            previousSnapshot: previous,
+            spotlight: null,
+            history,
+          };
+        }),
+      );
+    } catch {
+      // fall through
+    }
+  }
+
+  // Seed fallback
+  return CITIES.map((city) => {
+    const history = buildSeedSnapshots(city.slug);
+    const current = history[history.length - 1] ?? null;
+    const previous = history.length >= 2 ? history[history.length - 2] : null;
+    return {
+      city,
+      currentSnapshot: current,
+      previousSnapshot: previous,
+      spotlight: null,
+      history,
+    };
+  });
+}
+
+/**
+ * Get data for a single city by slug.
+ */
+export async function getCityBySlug(
+  slug: string,
+): Promise<CityDashboardData | null> {
+  const hasSupabase = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+
+  if (hasSupabase) {
+    try {
+      const { supabase } = await import("./supabase");
+      const { data: city } = await supabase
+        .from("cities")
+        .select("*")
+        .eq("slug", slug)
+        .single();
+      if (!city) return null;
+
+      const { data: snapshots } = await supabase
+        .from("bpi_snapshots")
+        .select("*")
+        .eq("city_id", city.id)
+        .order("week_of", { ascending: true });
+
+      const history = (snapshots ?? []) as BpiSnapshot[];
+      const current = history[history.length - 1] ?? null;
+      const previous = history.length >= 2 ? history[history.length - 2] : null;
+
+      const { data: spotlightData } = await supabase
+        .from("burger_spotlight")
+        .select("*")
+        .eq("city_id", city.id)
+        .order("week_of", { ascending: false })
+        .limit(1)
+        .single();
+
+      return {
+        city: city as City,
+        currentSnapshot: current,
+        previousSnapshot: previous,
+        spotlight: (spotlightData as BurgerSpotlight) ?? null,
+        history,
+      };
+    } catch {
+      // fall through
+    }
+  }
+
+  // Seed fallback
+  const seedCity = CITIES.find((c) => c.slug === slug);
+  if (!seedCity) return null;
+  const history = buildSeedSnapshots(seedCity.slug);
+  const current = history[history.length - 1] ?? null;
+  const previous = history.length >= 2 ? history[history.length - 2] : null;
+  return {
+    city: seedCity,
+    currentSnapshot: current,
+    previousSnapshot: previous,
+    spotlight: null,
+    history,
+  };
+}
+
+/**
+ * Get all city slugs (for static generation).
+ */
+export async function getAllCitySlugs(): Promise<string[]> {
+  const hasSupabase = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+
+  if (hasSupabase) {
+    try {
+      const { supabase } = await import("./supabase");
+      const { data } = await supabase.from("cities").select("slug");
+      if (data) return data.map((c: { slug: string }) => c.slug);
+    } catch {
+      // fall through
+    }
+  }
+
+  return CITIES.map((c) => c.slug);
+}
+
 async function getSupabaseDashboardData(): Promise<DashboardData> {
   const { supabase } = await import("./supabase");
 
