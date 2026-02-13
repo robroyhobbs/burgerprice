@@ -110,9 +110,10 @@ export async function GET(request: NextRequest) {
         await supabase.from("burger_spotlight").insert({
           city_id: city.id,
           week_of: weekOf,
-          ...spotlight,
           restaurant_name: spotlight.restaurantName,
           burger_name: spotlight.burgerName,
+          price: spotlight.price,
+          description: spotlight.description,
         });
 
         results[city.slug] = bpiScore;
@@ -126,8 +127,8 @@ export async function GET(request: NextRequest) {
         // Revalidate city page
         revalidatePath(`/cities/${city.slug}`);
 
-        // Delay between cities to avoid DeepSeek rate limits
-        await sleep(2000);
+        // Brief delay between cities to avoid DeepSeek rate limits
+        await sleep(500);
       } catch {
         // One city failing doesn't stop the rest
         results[city.slug] = -2; // Error
