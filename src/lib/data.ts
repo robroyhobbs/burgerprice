@@ -478,15 +478,25 @@ export async function getPurchasingPower(): Promise<PurchasingPowerEntry[]> {
   try {
     const { supabase } = await import("./supabase");
 
-    // Get latest week_of
-    const { data: latest } = await supabase
+    // Get the most recent week that has at least 3 cities
+    const { data: allRows } = await supabase
       .from("purchasing_power")
       .select("week_of")
-      .order("week_of", { ascending: false })
-      .limit(1)
-      .single();
+      .order("week_of", { ascending: false });
 
-    if (!latest) return [];
+    if (!allRows || allRows.length === 0) return [];
+
+    // Count cities per week, pick the most recent with 3+ cities
+    const weekCounts = new Map<string, number>();
+    for (const row of allRows) {
+      weekCounts.set(row.week_of, (weekCounts.get(row.week_of) ?? 0) + 1);
+    }
+    const bestWeek = Array.from(weekCounts.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .find(([, count]) => count >= 3)?.[0];
+
+    if (!bestWeek) return [];
+    const latest = { week_of: bestWeek };
 
     const { data, error } = await supabase
       .from("purchasing_power")
