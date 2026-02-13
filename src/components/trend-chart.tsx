@@ -21,10 +21,23 @@ interface ChartDataPoint {
   [key: string]: string | number;
 }
 
-const CITY_CONFIG: Record<string, { stroke: string; fill: string; label: string }> = {
-  Boston: { stroke: "#8B0000", fill: "#8B0000", label: "Boston, MA" },
-  Seattle: { stroke: "#228B22", fill: "#228B22", label: "Seattle, WA" },
-};
+// Rotating color palette for any number of cities
+const CITY_COLORS = [
+  "#8B0000",
+  "#228B22",
+  "#1E40AF",
+  "#B45309",
+  "#7C3AED",
+  "#BE185D",
+  "#0E7490",
+  "#4338CA",
+  "#A16207",
+  "#059669",
+];
+
+function getCityColor(index: number): string {
+  return CITY_COLORS[index % CITY_COLORS.length];
+}
 
 export function TrendChart({ cities }: TrendChartProps) {
   const { theme } = useTheme();
@@ -76,16 +89,16 @@ export function TrendChart({ cities }: TrendChartProps) {
 
         {/* Legend */}
         <div className="hidden sm:flex items-center gap-5">
-          {cities.map((c) => {
-            const config = CITY_CONFIG[c.city.name];
+          {cities.map((c, i) => {
+            const color = getCityColor(i);
             return (
               <div key={c.city.slug} className="flex items-center gap-2">
                 <div
                   className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: config?.stroke ?? "#888" }}
+                  style={{ backgroundColor: color }}
                 />
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  {config?.label ?? c.city.name}
+                  {c.city.name}, {c.city.state}
                 </span>
                 {c.currentSnapshot && (
                   <span className="bpi-number text-xs font-bold text-gray-700 dark:text-gray-200">
@@ -105,9 +118,8 @@ export function TrendChart({ cities }: TrendChartProps) {
             margin={{ top: 10, right: 10, bottom: 5, left: 10 }}
           >
             <defs>
-              {cities.map((cityData) => {
-                const config = CITY_CONFIG[cityData.city.name];
-                const color = config?.fill ?? "#888";
+              {cities.map((cityData, i) => {
+                const color = getCityColor(i);
                 return (
                   <linearGradient
                     key={cityData.city.slug}
@@ -157,27 +169,30 @@ export function TrendChart({ cities }: TrendChartProps) {
               formatter={(value: number | undefined) =>
                 value != null ? [`$${value.toFixed(2)}`] : []
               }
-              cursor={{ stroke: isDark ? "#3A3A4E" : "#D1D5DB", strokeWidth: 1 }}
+              cursor={{
+                stroke: isDark ? "#3A3A4E" : "#D1D5DB",
+                strokeWidth: 1,
+              }}
             />
-            {cities.map((cityData) => {
-              const config = CITY_CONFIG[cityData.city.name];
+            {cities.map((cityData, i) => {
+              const color = getCityColor(i);
               return (
                 <Area
                   key={cityData.city.slug}
                   type="monotone"
                   dataKey={cityData.city.name}
-                  stroke={config?.stroke ?? "#888"}
+                  stroke={color}
                   strokeWidth={2.5}
                   fill={`url(#gradient-${cityData.city.slug})`}
                   dot={{
                     r: 4,
                     fill: isDark ? "#1E1E30" : "#FFFFFF",
-                    stroke: config?.stroke ?? "#888",
+                    stroke: color,
                     strokeWidth: 2,
                   }}
                   activeDot={{
                     r: 6,
-                    fill: config?.stroke ?? "#888",
+                    fill: color,
                     stroke: isDark ? "#1E1E30" : "#FFFFFF",
                     strokeWidth: 2,
                   }}

@@ -95,36 +95,36 @@ Add a BPI leaderboard component to the homepage showing all 10 cities ranked by 
 
 #### Happy Path
 
-- [ ] Leaderboard renders all 10 cities sorted by BPI score descending
-- [ ] Each row shows rank, city name, BPI score, weekly % change with arrow
-- [ ] Showdown picks 2 deterministic cities for a given week
-- [ ] Same week always produces same 2 cities (seeded random)
-- [ ] Different weeks produce different matchups
-- [ ] Ticker tape shows data for showdown cities (not all 10)
+- [x] Leaderboard renders all 10 cities sorted by BPI score descending
+- [x] Each row shows rank, city name, BPI score, weekly % change with arrow
+- [x] Showdown picks 2 deterministic cities for a given week
+- [x] Same week always produces same 2 cities (seeded random)
+- [x] Different weeks produce different matchups
+- [x] Ticker tape shows data for showdown cities (not all 10)
 
 #### Bad Path
 
-- [ ] Leaderboard renders gracefully when some cities have no snapshots yet
-- [ ] Cities with null BPI score show "—" not $0.00 or NaN
-- [ ] Showdown handles case where < 2 cities exist
+- [x] Leaderboard renders gracefully when some cities have no snapshots yet
+- [x] Cities with null BPI score show "—" not $0.00 or NaN
+- [x] Showdown handles case where < 2 cities exist
 
 #### Edge Cases
 
-- [ ] All cities have identical BPI score — rank handles ties
-- [ ] City with 0% change shows "—" not "0.0%"
-- [ ] Leaderboard works with only 2 cities (backward compatible)
+- [x] All cities have identical BPI score — rank handles ties
+- [x] City with 0% change shows "—" not "0.0%"
+- [x] Leaderboard works with only 2 cities (backward compatible)
 
 #### Security
 
-- [ ] Leaderboard data fetched server-side, no API keys exposed to client
+- [x] Leaderboard data fetched server-side, no API keys exposed to client
 
 #### Data Leak
 
-- [ ] Raw prices not exposed in leaderboard API response
+- [x] Raw prices not exposed in leaderboard API response
 
 #### Data Damage
 
-- [ ] Leaderboard is read-only, no mutations possible
+- [x] Leaderboard is read-only, no mutations possible
 
 ### E2E Gate
 
