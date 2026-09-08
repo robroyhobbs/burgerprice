@@ -23,8 +23,13 @@ export default function AboutPage() {
             Index, but exclusively for the most important food group: burgers.
           </p>
           <p>
-            We currently track <strong>Boston, MA</strong> and{" "}
-            <strong>Seattle, WA</strong>, with plans to expand to additional cities.
+            We currently track <strong>10 cities</strong>: Austin, Boston, Chicago,
+            Los Angeles, Nashville, New Orleans, New York, Portland, San Francisco,
+            and Seattle. Don&apos;t see yours? Request it on the{" "}
+            <Link href="/cities" className="text-ketchup dark:text-mustard hover:underline">
+              cities page
+            </Link>
+            — cities with 25+ requests get added to the index.
           </p>
 
           <h2 className="font-headline text-xl text-gray-900 dark:text-white">Methodology</h2>
