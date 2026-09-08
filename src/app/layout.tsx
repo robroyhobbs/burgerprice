@@ -32,11 +32,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: "Burger Price Index | The Financial Index for Burger Lovers",
   description:
-    "Track burger prices across US cities with the BPI. Boston vs Seattle - who pays more for a burger? Weekly index updates, market reports, and the Burger of the Week.",
+    "Track burger prices across US cities with the BPI. Weekly national index, city showdowns, market reports, and the Burger of the Week.",
   openGraph: {
     title: "Burger Price Index",
     description:
-      "The Bloomberg Terminal of burgers. Track real burger prices across US cities.",
+      "The Bloomberg Terminal of burgers. Live national BPI across US cities — updated weekly.",
     url: baseUrl,
     siteName: "Burger Price Index",
     type: "website",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
         url: "/api/og",
         width: 1200,
         height: 630,
-        alt: "Burger Price Index - Boston vs Seattle",
+        alt: "Burger Price Index — national BPI share card",
       },
     ],
   },
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Burger Price Index",
     description:
-      "The Bloomberg Terminal of burgers. Track real burger prices across US cities.",
+      "The Bloomberg Terminal of burgers. Live national BPI across US cities — updated weekly.",
     images: ["/api/og"],
   },
 };

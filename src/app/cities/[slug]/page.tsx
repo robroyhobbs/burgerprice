@@ -18,9 +18,38 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
   if (!data) return { title: "City Not Found | Burger Price Index" };
 
   const bpi = data.currentSnapshot?.bpi_score;
+  const change = data.currentSnapshot?.change_pct;
+  const changeText =
+    change == null
+      ? ""
+      : ` (${change > 0 ? "+" : ""}${change.toFixed(1)}% WoW)`;
+  const title = `${data.city.name}, ${data.city.state} | Burger Price Index`;
+  const description = `Burger Price Index for ${data.city.name}: ${
+    bpi ? `$${bpi.toFixed(2)}${changeText}` : "collecting data"
+  }. See restaurant prices, trends, and national comparison.`;
+  const ogImage = `/api/og?city=${data.city.slug}`;
+
   return {
-    title: `${data.city.name}, ${data.city.state} | Burger Price Index`,
-    description: `Burger Price Index for ${data.city.name}: ${bpi ? `$${bpi.toFixed(2)}` : "collecting data"}. See restaurant prices, trends, and national comparison.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: `${data.city.name} Burger Price Index`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
   };
 }
 
