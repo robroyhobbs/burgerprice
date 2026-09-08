@@ -1,0 +1,90 @@
+name: Deploy Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: gen-lang-client-0405402450
+  REGION: us-central1
+  SERVICE: burgerprice-web
+  ARTIFACT_REPO: burgerprice
+  CLOUDSQL_INSTANCE: gen-lang-client-0405402450:us-central1:burgerprice-db
+  RUNTIME_SA: burgerprice-run@gen-lang-client-0405402450.iam.gserviceaccount.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF)
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${SERVICE}:${GITHUB_SHA}"
+          docker build -t "${IMAGE}" .
+          docker push "${IMAGE}"
+          echo "IMAGE=${IMAGE}" >> "${GITHUB_ENV}"
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          project_id: ${{ env.PROJECT_ID }}
+          image: ${{ env.IMAGE }}
+          env_vars: |-
+            NODE_ENV=production
+            REQUIRE_DATABASE=true
+            NEXT_PUBLIC_BASE_URL=https://burgerprice.com
+            GOOGLE_CLOUD_PROJECT=gen-lang-client-0405402450
+            GOOGLE_CLOUD_LOCATION=us-central1
+            GEMINI_MODEL=gemini-2.0-flash
+          secrets: |-
+            DATABASE_URL=DATABASE_URL:latest
+            CRON_SECRET=CRON_SECRET:latest
+          flags: >-
+            --port=8080
+            --cpu=1
+            --memory=512Mi
+            --min-instances=0
+            --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }}
+            --service-account=${{ env.RUNTIME_SA }}
+
+      - name: Smoke check /api/health
+        run: |
+          set -euo pipefail
+          URL="https://burgerprice.com/api/health"
+          echo "GET ${URL}"
+          for i in 1 2 3 4 5 6; do
+            BODY="$(curl -fsS --retry 3 --retry-delay 2 "${URL}" || true)"
+            echo "attempt ${i}: ${BODY}"
+            echo "${BODY}" > /tmp/health.json
+            if python3 -c "import json,sys; d=json.load(open(\"/tmp/health.json\")); sys.exit(0 if d.get(\"status\")==\"ok\" and d.get(\"mode\")==\"database\" else 1)"; then
+              echo "Smoke check passed."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Smoke check failed: expected status=ok and mode=database"
+          exit 1
+
