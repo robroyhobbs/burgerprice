@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { CityDashboardData } from "@/lib/types";
-import { NearMeButton } from "./near-me";
+import { NearMeButton, type NearMeResult } from "./near-me";
 import { CityRequestForm } from "./city-request-form";
 
 interface CitiesIndexProps {
@@ -13,7 +13,7 @@ interface CitiesIndexProps {
 
 export function CitiesIndex({ cities }: CitiesIndexProps) {
   const [search, setSearch] = useState("");
-  const [nearestInfo, setNearestInfo] = useState<{ slug: string; distance: number } | null>(null);
+  const [nearestInfo, setNearestInfo] = useState<NearMeResult | null>(null);
   const router = useRouter();
 
   // Sort by BPI descending, no-data cities last
@@ -27,9 +27,11 @@ export function CitiesIndex({ cities }: CitiesIndexProps) {
       `${c.city.name} ${c.city.state}`.toLowerCase().includes(search.toLowerCase()),
     );
 
-  function handleNearMeFound(slug: string, distance: number) {
-    setNearestInfo({ slug, distance });
-    router.push(`/cities/${slug}`);
+  function handleNearMeFound(result: NearMeResult) {
+    setNearestInfo(result);
+    window.setTimeout(() => {
+      router.push(`/cities/${result.slug}`);
+    }, 900);
   }
 
   return (
@@ -45,6 +47,11 @@ export function CitiesIndex({ cities }: CitiesIndexProps) {
           cities={cities.map((c) => c.city)}
           onFound={handleNearMeFound}
         />
+        {nearestInfo && (
+          <p className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-ketchup/10 dark:bg-mustard/10 text-sm font-medium text-ketchup dark:text-mustard">
+            Closest: {nearestInfo.name} · {nearestInfo.distanceMiles} mi
+          </p>
+        )}
       </div>
 
       {/* Search */}

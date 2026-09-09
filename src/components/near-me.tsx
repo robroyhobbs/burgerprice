@@ -3,9 +3,15 @@
 import { useState } from "react";
 import type { City } from "@/lib/types";
 
+export interface NearMeResult {
+  slug: string;
+  name: string;
+  distanceMiles: number;
+}
+
 interface NearMeProps {
   cities: City[];
-  onFound: (slug: string, distanceMiles: number) => void;
+  onFound: (result: NearMeResult) => void;
 }
 
 export function NearMeButton({ cities, onFound }: NearMeProps) {
@@ -27,7 +33,9 @@ export function NearMeButton({ cities, onFound }: NearMeProps) {
         const nearest = findNearest(latitude, longitude, cities);
         setLoading(false);
         if (nearest) {
-          onFound(nearest.slug, nearest.distance);
+          onFound(nearest);
+        } else {
+          setError("No tracked cities with coordinates yet.");
         }
       },
       () => {
@@ -45,7 +53,7 @@ export function NearMeButton({ cities, onFound }: NearMeProps) {
         disabled={loading}
         className="px-5 py-3 rounded-2xl bg-ketchup dark:bg-mustard text-white dark:text-grill font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
       >
-        {loading ? "Finding..." : "📍 Find Burgers Near Me"}
+        {loading ? "Finding..." : "Find burgers near me"}
       </button>
       {error && (
         <p className="text-xs text-gray-400">{error}</p>
@@ -58,14 +66,18 @@ function findNearest(
   lat: number,
   lng: number,
   cities: City[],
-): { slug: string; distance: number } | null {
-  let best: { slug: string; distance: number } | null = null;
+): NearMeResult | null {
+  let best: NearMeResult | null = null;
 
   for (const city of cities) {
     if (city.lat == null || city.lng == null) continue;
     const d = haversine(lat, lng, city.lat, city.lng);
-    if (!best || d < best.distance) {
-      best = { slug: city.slug, distance: Math.round(d) };
+    if (!best || d < best.distanceMiles) {
+      best = {
+        slug: city.slug,
+        name: city.name,
+        distanceMiles: Math.round(d),
+      };
     }
   }
 
