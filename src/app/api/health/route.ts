@@ -1,14 +1,35 @@
 import { NextResponse } from "next/server";
+import { resolveDataMode, isDatabaseRequired } from "@/lib/mode";
 
 export async function GET() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const hasSupabase = Boolean(supabaseUrl && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const mode = resolveDataMode();
+  const databaseRequired = isDatabaseRequired();
 
-  let dbStatus = "disconnected";
+  let dbStatus: "connected" | "disconnected" | "error" = "disconnected";
   let citiesCount = 0;
   let snapshotsCount = 0;
+  let effectiveMode = mode;
 
-  if (hasSupabase) {
+  if (mode === "database") {
+    try {
+      const { query } = await import("@/lib/db");
+      const [citiesRes, snapshotsRes] = await Promise.all([
+        query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM cities`),
+        query<{ count: string }>(
+          `SELECT COUNT(*)::text AS count FROM bpi_snapshots`,
+        ),
+      ]);
+      citiesCount = Number(citiesRes.rows[0]?.count ?? 0);
+      snapshotsCount = Number(snapshotsRes.rows[0]?.count ?? 0);
+      dbStatus = "connected";
+      effectiveMode = "database";
+    } catch (err) {
+      console.error("Health check Postgres error:", err);
+      dbStatus = "error";
+      // Keep mode=database so smoke checks can detect a broken DB path
+      effectiveMode = "database";
+    }
+  } else if (mode === "supabase") {
     try {
       const { supabase } = await import("@/lib/supabase");
 
@@ -32,6 +53,8 @@ export async function GET() {
     status: "ok",
     app: "burger-price-index",
     database: dbStatus,
+    mode: effectiveMode,
+    database_required: databaseRequired,
     cities: citiesCount,
     snapshots_count: snapshotsCount,
     timestamp: new Date().toISOString(),
