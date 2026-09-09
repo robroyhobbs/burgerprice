@@ -14,6 +14,7 @@ import { IndustryNews } from "@/components/industry-news";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { TheSpread } from "@/components/the-spread";
 import { PurchasingPower } from "@/components/purchasing-power";
+import { FindYourCity } from "@/components/find-your-city";
 import { Footer } from "@/components/footer";
 import { getShowdownIndices } from "@/lib/showdown";
 
@@ -50,6 +51,7 @@ export default async function Home() {
           mostExpensive={spread.mostExpensive}
         />
         <PurchasingPower data={purchasingPower} />
+        <FindYourCity cities={data.cities.map((c) => c.city)} />
         <NewsletterForm />
       </main>
       <Footer />
