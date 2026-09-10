@@ -18,6 +18,7 @@ import { FindYourCity } from "@/components/find-your-city";
 import { Footer } from "@/components/footer";
 import { getShowdownIndices } from "@/lib/showdown";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
 export default async function Home() {
