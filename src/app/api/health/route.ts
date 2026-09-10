@@ -9,6 +9,7 @@ export async function GET() {
   let citiesCount = 0;
   let snapshotsCount = 0;
   let effectiveMode = mode;
+  let databaseError: string | undefined;
 
   if (mode === "database") {
     try {
@@ -26,6 +27,7 @@ export async function GET() {
     } catch (err) {
       console.error("Health check Postgres error:", err);
       dbStatus = "error";
+      databaseError = err instanceof Error ? err.message : "unknown";
       // Keep mode=database so smoke checks can detect a broken DB path
       effectiveMode = "database";
     }
@@ -53,6 +55,7 @@ export async function GET() {
     status: "ok",
     app: "burger-price-index",
     database: dbStatus,
+    ...(databaseError !== undefined ? { database_error: databaseError } : {}),
     mode: effectiveMode,
     database_required: databaseRequired,
     cities: citiesCount,
