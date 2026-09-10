@@ -3,15 +3,47 @@ import { BpiCard } from "./bpi-card";
 
 interface CityShowdownProps {
   cities: CityDashboardData[];
+  weekOf?: string;
 }
 
-export function CityShowdown({ cities }: CityShowdownProps) {
+function formatWeekLabel(weekOf: string): string {
+  const d = new Date(`${weekOf}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return weekOf;
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function showdownTagline(
+  city1: CityDashboardData,
+  city2: CityDashboardData
+): string {
+  const bpi1 = city1.currentSnapshot?.bpi_score ?? 0;
+  const bpi2 = city2.currentSnapshot?.bpi_score ?? 0;
+  const gap = Math.abs(bpi1 - bpi2);
+  const gapText = `$${gap.toFixed(2)}`;
+
+  if (gap < 0.01) {
+    return `${city1.city.name} and ${city2.city.name} are locked at parity. Markets hate a draw.`;
+  }
+
+  const leader = bpi1 > bpi2 ? city1.city.name : city2.city.name;
+  const underdog = bpi1 > bpi2 ? city2.city.name : city1.city.name;
+  return `${leader} leads by ${gapText}. ${underdog} is the value trade this week.`;
+}
+
+export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
   if (cities.length < 2) return null;
 
   const [city1, city2] = cities;
   const bpi1 = city1.currentSnapshot?.bpi_score ?? 0;
   const bpi2 = city2.currentSnapshot?.bpi_score ?? 0;
   const isTie = Math.abs(bpi1 - bpi2) < 0.01;
+  const weekLabel = weekOf ? formatWeekLabel(weekOf) : null;
+  const tagline = showdownTagline(city1, city2);
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-14 pb-6">
@@ -19,10 +51,16 @@ export function CityShowdown({ cities }: CityShowdownProps) {
       <div className="text-center mb-12">
         <p className="text-xs uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500 mb-3 font-medium">
           Weekly Showdown
+          {weekLabel ? ` · Week of ${weekLabel}` : ""}
         </p>
         <h2 className="font-headline text-3xl md:text-5xl text-gray-900 dark:text-white">
-          {city1.city.name} <span className="text-gray-300 dark:text-gray-600 mx-3">vs</span> {city2.city.name}
+          {city1.city.name}{" "}
+          <span className="text-gray-300 dark:text-gray-600 mx-3">vs</span>{" "}
+          {city2.city.name}
         </h2>
+        <p className="mt-4 max-w-2xl mx-auto text-sm md:text-base text-gray-500 dark:text-gray-400 leading-relaxed">
+          {tagline}
+        </p>
       </div>
 
       {/* Cards */}
