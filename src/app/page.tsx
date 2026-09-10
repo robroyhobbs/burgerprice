@@ -39,10 +39,10 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-paper dark:bg-grill">
-      <Header cities={showdownCities} />
+      <Header cities={data.cities} />
       <main className="space-y-6 md:space-y-10">
         <NationalBpi history={nationalHistory} />
-        <CityShowdown cities={showdownCities} />
+        <CityShowdown cities={showdownCities} weekOf={data.weekOf} />
         <Leaderboard cities={data.cities} />
         <CandlestickChart cities={trendCities} />
         <MarketReport report={data.latestReport} />
