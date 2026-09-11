@@ -4,6 +4,8 @@ import type { CityDashboardData, RawPrice } from "@/lib/types";
 import { getRestaurantUrl } from "@/lib/restaurant-utils";
 import { CandlestickChart } from "./candlestick-chart";
 import Link from "next/link";
+import { ShareStrip } from "./share-strip";
+import { buildCityCaption, cityShareUrl } from "@/lib/share";
 
 interface CityProfileProps {
   data: CityDashboardData;
@@ -89,6 +91,19 @@ export function CityProfile({
           </div>
         </div>
       </div>
+
+      <ShareStrip
+        className="!mt-0 mb-8"
+        shareUrl={cityShareUrl(city.slug)}
+        caption={buildCityCaption({
+          name: city.name,
+          state: city.state,
+          slug: city.slug,
+          bpi,
+          changePct: change,
+        })}
+        label="Share this city"
+      />
 
       {/* National Average Comparison */}
       {diffFromNational !== null && nationalAvg !== null && (

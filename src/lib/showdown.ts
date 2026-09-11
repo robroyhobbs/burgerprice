@@ -21,3 +21,43 @@ export function getShowdownIndices(weekOf: string, cityCount: number): [number, 
 
   return [idx1, idx2];
 }
+
+/**
+ * Parse showdown query params into an optional city-slug pair.
+ * Accepts:
+ *   ?showdown=1 | true          → weekly pair (returns null)
+ *   ?showdown=slug-a,slug-b     → explicit pair
+ *   ?left=slug-a&right=slug-b   → explicit pair
+ */
+export function parseShowdownPair(
+  showdown: string | null,
+  left: string | null,
+  right: string | null,
+): [string, string] | null {
+  if (left && right) {
+    return [left.trim().toLowerCase(), right.trim().toLowerCase()];
+  }
+  if (!showdown) return null;
+  const trimmed = showdown.trim();
+  if (!trimmed || trimmed === "1" || trimmed.toLowerCase() === "true") {
+    return null;
+  }
+  const parts = trimmed
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  if (parts.length >= 2) return [parts[0], parts[1]];
+  return null;
+}
+
+export function isShowdownRequest(opts: {
+  showdown: string | null;
+  type: string | null;
+  left: string | null;
+  right: string | null;
+}): boolean {
+  if (opts.type === "showdown") return true;
+  if (opts.left && opts.right) return true;
+  if (opts.showdown == null || opts.showdown === "") return false;
+  return true;
+}

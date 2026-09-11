@@ -5,7 +5,7 @@ import {
   getCityBySlug,
   getNationalBpiHistory,
 } from "@/lib/data";
-import { getShowdownIndices } from "@/lib/showdown";
+import { getShowdownIndices, isShowdownRequest, parseShowdownPair } from "@/lib/showdown";
 
 export const runtime = "nodejs";
 
@@ -316,6 +316,18 @@ function ShowdownCard(props: {
       <div
         style={{
           display: "flex",
+          fontSize: 18,
+          color: "#DAA520",
+          textTransform: "uppercase",
+          letterSpacing: "0.2em",
+          marginBottom: 8,
+        }}
+      >
+        This Week's Matchup
+      </div>
+      <div
+        style={{
+          display: "flex",
           alignItems: "center",
           justifyContent: "center",
           flex: 1,
@@ -405,8 +417,71 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const citySlug = searchParams.get("city");
   const type = searchParams.get("type");
+  const showdownParam = searchParams.get("showdown");
+  const leftSlugParam = searchParams.get("left");
+  const rightSlugParam = searchParams.get("right");
+  const showdownMode = isShowdownRequest({
+    showdown: showdownParam,
+    type,
+    left: leftSlugParam,
+    right: rightSlugParam,
+  });
 
   try {
+    // Explicit city pair / weekly showdown before single-city card
+    if (showdownMode) {
+      const data = await getDashboardData();
+      if (data.cities.length >= 2) {
+        const pairSlugs = parseShowdownPair(
+          showdownParam,
+          leftSlugParam,
+          rightSlugParam,
+        );
+        let left = null as (typeof data.cities)[number] | null;
+        let right = null as (typeof data.cities)[number] | null;
+
+        if (pairSlugs) {
+          left = data.cities.find((c) => c.city.slug === pairSlugs[0]) ?? null;
+          right = data.cities.find((c) => c.city.slug === pairSlugs[1]) ?? null;
+          // Fall back to getCityBySlug if not in this week's dashboard slice
+          if (!left) {
+            const fetched = await getCityBySlug(pairSlugs[0]);
+            if (fetched) left = fetched;
+          }
+          if (!right) {
+            const fetched = await getCityBySlug(pairSlugs[1]);
+            if (fetched) right = fetched;
+          }
+        } else {
+          const [idx1, idx2] = getShowdownIndices(
+            data.weekOf,
+            data.cities.length,
+          );
+          left = data.cities[idx1] ?? null;
+          right = data.cities[idx2] ?? null;
+        }
+
+        const leftSnap = left?.currentSnapshot;
+        const rightSnap = right?.currentSnapshot;
+        if (left && right && leftSnap && rightSnap) {
+          return new ImageResponse(
+            (
+              <ShowdownCard
+                leftLabel={`${left.city.name}, ${left.city.state}`}
+                leftBpi={leftSnap.bpi_score}
+                leftChange={leftSnap.change_pct}
+                rightLabel={`${right.city.name}, ${right.city.state}`}
+                rightBpi={rightSnap.bpi_score}
+                rightChange={rightSnap.change_pct}
+                weekOf={leftSnap.week_of || data.weekOf}
+              />
+            ),
+            { width: 1200, height: 630 },
+          );
+        }
+      }
+    }
+
     if (citySlug) {
       const cityData = await getCityBySlug(citySlug);
       const snap = cityData?.currentSnapshot;
@@ -431,30 +506,6 @@ export async function GET(request: NextRequest) {
     const history = getNationalBpiHistory(data.cities);
     const latest = history[history.length - 1];
     const previous = history.length >= 2 ? history[history.length - 2] : null;
-
-    if (type === "showdown" && data.cities.length >= 2) {
-      const [idx1, idx2] = getShowdownIndices(data.weekOf, data.cities.length);
-      const left = data.cities[idx1];
-      const right = data.cities[idx2];
-      const leftSnap = left?.currentSnapshot;
-      const rightSnap = right?.currentSnapshot;
-      if (left && right && leftSnap && rightSnap) {
-        return new ImageResponse(
-          (
-            <ShowdownCard
-              leftLabel={`${left.city.name}, ${left.city.state}`}
-              leftBpi={leftSnap.bpi_score}
-              leftChange={leftSnap.change_pct}
-              rightLabel={`${right.city.name}, ${right.city.state}`}
-              rightBpi={rightSnap.bpi_score}
-              rightChange={rightSnap.change_pct}
-              weekOf={data.weekOf}
-            />
-          ),
-          { width: 1200, height: 630 },
-        );
-      }
-    }
 
     if (latest) {
       const changePct =
