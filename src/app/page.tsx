@@ -16,12 +16,61 @@ import { TheSpread } from "@/components/the-spread";
 import { PurchasingPower } from "@/components/purchasing-power";
 import { FindYourCity } from "@/components/find-your-city";
 import { Footer } from "@/components/footer";
-import { getShowdownIndices } from "@/lib/showdown";
+import { getShowdownIndices, parseShowdownPair } from "@/lib/showdown";
+import { showdownOgPath } from "@/lib/share";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
-export default async function Home() {
+interface HomeProps {
+  searchParams: Promise<{ showdown?: string }>;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: HomeProps): Promise<Metadata> {
+  const sp = await searchParams;
+  const raw = sp.showdown;
+  if (raw == null || raw === "") return {};
+
+  const pair = parseShowdownPair(raw, null, null);
+  const ogImage = pair
+    ? showdownOgPath(pair[0], pair[1])
+    : showdownOgPath();
+
+  const title = "Weekly City Showdown | Burger Price Index";
+  const description =
+    "This week's head-to-head BPI matchup. Bloomberg Terminal energy, Wendy's drive-thru prices.";
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: "Weekly BPI City Showdown",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
+
+export default async function Home({ searchParams }: HomeProps) {
+  // searchParams reserved for showdown OG share URLs (?showdown=1|slug,slug)
+  await searchParams;
+
   const [data, purchasingPower] = await Promise.all([
     getDashboardData(),
     getPurchasingPower(),

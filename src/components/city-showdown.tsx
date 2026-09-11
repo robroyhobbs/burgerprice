@@ -1,5 +1,7 @@
 import type { CityDashboardData } from "@/lib/types";
 import { BpiCard } from "./bpi-card";
+import { ShareStrip } from "./share-strip";
+import { buildShowdownCaption, showdownShareUrl } from "@/lib/share";
 
 interface CityShowdownProps {
   cities: CityDashboardData[];
@@ -45,6 +47,17 @@ export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
   const weekLabel = weekOf ? formatWeekLabel(weekOf) : null;
   const tagline = showdownTagline(city1, city2);
 
+  const shareUrl = showdownShareUrl(city1.city.slug, city2.city.slug);
+  const caption = buildShowdownCaption({
+    leftName: city1.city.name,
+    leftBpi: bpi1,
+    rightName: city2.city.name,
+    rightBpi: bpi2,
+    weekOf: weekOf || city1.currentSnapshot?.week_of || "",
+    leftSlug: city1.city.slug,
+    rightSlug: city2.city.slug,
+  });
+
   return (
     <section className="max-w-7xl mx-auto px-6 pt-14 pb-6">
       {/* Section header */}
@@ -76,6 +89,12 @@ export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
 
         <BpiCard data={city2} isWinner={!isTie && bpi2 > bpi1} />
       </div>
+
+      <ShareStrip
+        shareUrl={shareUrl}
+        caption={caption}
+        label="Share this showdown"
+      />
     </section>
   );
 }
