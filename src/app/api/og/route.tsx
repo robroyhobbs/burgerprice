@@ -323,7 +323,7 @@ function ShowdownCard(props: {
           marginBottom: 8,
         }}
       >
-        This Week's Matchup
+        Weekly Matchup
       </div>
       <div
         style={{
@@ -344,6 +344,7 @@ function ShowdownCard(props: {
         >
           <div
             style={{
+              display: "flex",
               fontSize: 22,
               color: "#9CA3AF",
               marginBottom: 12,
@@ -356,12 +357,23 @@ function ShowdownCard(props: {
           <div style={{ fontSize: 72, fontWeight: "bold", display: "flex" }}>
             ${props.leftBpi.toFixed(2)}
           </div>
-          <div style={{ fontSize: 22, color: left.color, marginTop: 8 }}>
-            {left.arrow} {left.text}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: 22,
+              color: left.color,
+              marginTop: 8,
+            }}
+          >
+            <span style={{ display: "flex" }}>{left.arrow}</span>
+            <span style={{ display: "flex" }}>{left.text}</span>
           </div>
         </div>
         <div
           style={{
+            display: "flex",
             fontSize: 28,
             color: "#DAA520",
             fontWeight: "bold",
@@ -380,6 +392,7 @@ function ShowdownCard(props: {
         >
           <div
             style={{
+              display: "flex",
               fontSize: 22,
               color: "#9CA3AF",
               marginBottom: 12,
@@ -392,8 +405,18 @@ function ShowdownCard(props: {
           <div style={{ fontSize: 72, fontWeight: "bold", display: "flex" }}>
             ${props.rightBpi.toFixed(2)}
           </div>
-          <div style={{ fontSize: 22, color: right.color, marginTop: 8 }}>
-            {right.arrow} {right.text}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: 22,
+              color: right.color,
+              marginTop: 8,
+            }}
+          >
+            <span style={{ display: "flex" }}>{right.arrow}</span>
+            <span style={{ display: "flex" }}>{right.text}</span>
           </div>
         </div>
       </div>
@@ -404,10 +427,12 @@ function ShowdownCard(props: {
           alignItems: "center",
         }}
       >
-        <span style={{ fontSize: 16, color: "#6B7280" }}>
+        <span style={{ display: "flex", fontSize: 16, color: "#6B7280" }}>
           Weekly Showdown · {formatWeek(props.weekOf)}
         </span>
-        <span style={{ fontSize: 16, color: "#DAA520" }}>burgerprice.com</span>
+        <span style={{ display: "flex", fontSize: 16, color: "#DAA520" }}>
+          burgerprice.com
+        </span>
       </div>
     </div>
   );
@@ -464,20 +489,24 @@ export async function GET(request: NextRequest) {
         const leftSnap = left?.currentSnapshot;
         const rightSnap = right?.currentSnapshot;
         if (left && right && leftSnap && rightSnap) {
-          return new ImageResponse(
-            (
-              <ShowdownCard
-                leftLabel={`${left.city.name}, ${left.city.state}`}
-                leftBpi={leftSnap.bpi_score}
-                leftChange={leftSnap.change_pct}
-                rightLabel={`${right.city.name}, ${right.city.state}`}
-                rightBpi={rightSnap.bpi_score}
-                rightChange={rightSnap.change_pct}
-                weekOf={leftSnap.week_of || data.weekOf}
-              />
-            ),
-            { width: 1200, height: 630 },
-          );
+          try {
+            return new ImageResponse(
+              (
+                <ShowdownCard
+                  leftLabel={`${left.city.name}, ${left.city.state}`}
+                  leftBpi={leftSnap.bpi_score}
+                  leftChange={leftSnap.change_pct}
+                  rightLabel={`${right.city.name}, ${right.city.state}`}
+                  rightBpi={rightSnap.bpi_score}
+                  rightChange={rightSnap.change_pct}
+                  weekOf={leftSnap.week_of || data.weekOf}
+                />
+              ),
+              { width: 1200, height: 630 },
+            );
+          } catch {
+            // Showdown Satori/render failure — fall through to national/fallback.
+          }
         }
       }
     }
