@@ -9,7 +9,28 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "All Cities | Burger Price Index",
-  description: "Compare burger prices across US cities. Find the most and least expensive cities for burgers.",
+  description:
+    "Compare burger prices across US cities. Find the most and least expensive cities for burgers — weekly BPI rankings, near-me discovery, and city showdowns.",
+  openGraph: {
+    title: "All Cities | Burger Price Index",
+    description:
+      "Ranked BPI across US cities. Click through for restaurant prices, trends, and national comparison.",
+    images: [
+      {
+        url: "/api/og",
+        width: 1200,
+        height: 630,
+        alt: "Burger Price Index — national BPI share card",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "All Cities | Burger Price Index",
+    description:
+      "Ranked BPI across US cities. Click through for restaurant prices, trends, and national comparison.",
+    images: ["/api/og"],
+  },
 };
 
 export default async function CitiesPage() {

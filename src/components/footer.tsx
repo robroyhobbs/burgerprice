@@ -26,6 +26,12 @@ export function Footer() {
               Index
             </h3>
             <nav className="flex flex-col gap-3 text-sm text-gray-500 dark:text-gray-400">
+              <Link href="/cities" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
+                All Cities
+              </Link>
+              <Link href="/newsletter" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
+                Weekly Newsletter
+              </Link>
               <Link href="/about" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
                 About &amp; Methodology
               </Link>
