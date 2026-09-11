@@ -12,6 +12,7 @@ env:
   ARTIFACT_REPO: burgerprice
   CLOUDSQL_INSTANCE: gen-lang-client-0405402450:us-central1:burgerprice-db
   RUNTIME_SA: burgerprice-run@gen-lang-client-0405402450.iam.gserviceaccount.com
+  CANARY_TAG: canary
 
 jobs:
   deploy:
@@ -44,7 +45,27 @@ jobs:
           docker push "${IMAGE}"
           echo "IMAGE=${IMAGE}" >> "${GITHUB_ENV}"
 
-      - name: Deploy to Cloud Run
+      - name: Record current production traffic (rollback target)
+        id: prior
+        run: |
+          set -euo pipefail
+          gcloud run services describe "${SERVICE}" \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --format=json > /tmp/service-before.json
+          PRIOR_REV="$(python3 -c '
+          import json
+          d = json.load(open("/tmp/service-before.json"))
+          traffic = d.get("status", {}).get("traffic") or []
+          prod = [t for t in traffic if (t.get("percent") or 0) > 0 and not t.get("tag")]
+          if not prod:
+              prod = [t for t in traffic if (t.get("percent") or 0) > 0]
+          print((prod[0].get("revisionName") or "") if prod else "")
+          ')"
+          echo "revision=${PRIOR_REV}" >> "${GITHUB_OUTPUT}"
+          echo "Prior production revision (rollback target): ${PRIOR_REV:-unknown}"
+
+      - name: Deploy to Cloud Run (no traffic, canary tag)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -52,6 +73,9 @@ jobs:
           region: ${{ env.REGION }}
           project_id: ${{ env.PROJECT_ID }}
           image: ${{ env.IMAGE }}
+          no_traffic: true
+          tag: ${{ env.CANARY_TAG }}
+          wait: true
           env_vars: |-
             NODE_ENV=production
             REQUIRE_DATABASE=true
@@ -70,21 +94,96 @@ jobs:
             --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }}
             --service-account=${{ env.RUNTIME_SA }}
 
-      - name: Smoke check /api/health
+      - name: Resolve canary URL
+        id: canary
         run: |
           set -euo pipefail
-          URL="https://burgerprice.com/api/health"
+          gcloud run services describe "${SERVICE}" \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --format=json > /tmp/service-after.json
+          CANARY_URL="$(python3 -c '
+          import json, os, sys
+          tag = os.environ["CANARY_TAG"]
+          d = json.load(open("/tmp/service-after.json"))
+          traffic = d.get("status", {}).get("traffic") or []
+          for t in traffic:
+              if t.get("tag") == tag and t.get("url"):
+                  print(t["url"])
+                  break
+          else:
+              base = (d.get("status") or {}).get("url") or ""
+              if base.startswith("https://"):
+                  print("https://" + tag + "---" + base[len("https://"):])
+              else:
+                  sys.exit("could not resolve canary URL")
+          ')"
+          NEW_REV="$(python3 -c '
+          import json, os
+          tag = os.environ["CANARY_TAG"]
+          d = json.load(open("/tmp/service-after.json"))
+          traffic = d.get("status", {}).get("traffic") or []
+          for t in traffic:
+              if t.get("tag") == tag and t.get("revisionName"):
+                  print(t["revisionName"])
+                  break
+          else:
+              print((d.get("status") or {}).get("latestCreatedRevisionName") or "")
+          ')"
+          echo "url=${CANARY_URL}" >> "${GITHUB_OUTPUT}"
+          echo "revision=${NEW_REV}" >> "${GITHUB_OUTPUT}"
+          echo "Canary URL: ${CANARY_URL}"
+          echo "Canary revision: ${NEW_REV}"
+          echo "Service URL (not used for smoke): ${{ steps.deploy.outputs.url }}"
+
+      - name: Smoke check canary /api/health
+        id: smoke
+        run: |
+          set -euo pipefail
+          URL="${{ steps.canary.outputs.url }}/api/health"
           echo "GET ${URL}"
-          for i in 1 2 3 4 5 6; do
-            BODY="$(curl -fsS --retry 3 --retry-delay 2 "${URL}" || true)"
+          echo "Rollback target if this fails: ${{ steps.prior.outputs.revision }}"
+          for i in 1 2 3 4 5 6 7 8; do
+            BODY="$(curl -fsS --retry 2 --retry-delay 2 "${URL}" || true)"
             echo "attempt ${i}: ${BODY}"
-            echo "${BODY}" > /tmp/health.json
-            if python3 -c "import json,sys; d=json.load(open(\"/tmp/health.json\")); sys.exit(0 if d.get(\"status\")==\"ok\" and d.get(\"mode\")==\"database\" else 1)"; then
-              echo "Smoke check passed."
+            if [ -z "${BODY}" ]; then
+              sleep 10
+              continue
+            fi
+            printf '%s' "${BODY}" > /tmp/health.json
+            if python3 -c '
+          import json, sys
+          d = json.load(open("/tmp/health.json"))
+          ok = (
+              d.get("status") == "ok"
+              and d.get("mode") == "database"
+              and d.get("database") == "connected"
+          )
+          cities = d.get("cities")
+          if ok and cities is not None and int(cities) == 0:
+              print("Smoke fail: cities==0", file=sys.stderr)
+              sys.exit(1)
+          sys.exit(0 if ok else 1)
+          '; then
+              echo "Canary smoke check passed."
               exit 0
             fi
             sleep 10
           done
-          echo "Smoke check failed: expected status=ok and mode=database"
+          echo "Canary smoke check failed."
+          echo "Expected: status=ok AND mode=database AND database=connected (and cities!=0 if present)."
+          echo "NOT promoting traffic. Prior production revision left in place: ${{ steps.prior.outputs.revision }}"
+          echo "Failed canary revision: ${{ steps.canary.outputs.revision }}"
           exit 1
 
+      - name: Promote canary to 100% traffic
+        run: |
+          set -euo pipefail
+          echo "Promoting latest revision to 100% traffic..."
+          echo "New revision: ${{ steps.canary.outputs.revision }}"
+          echo "Previous production revision: ${{ steps.prior.outputs.revision }}"
+          gcloud run services update-traffic "${SERVICE}" \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --to-latest
+          echo "Traffic promoted to latest (100%)."
