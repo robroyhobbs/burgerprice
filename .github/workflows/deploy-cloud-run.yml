@@ -82,7 +82,7 @@ jobs:
             NEXT_PUBLIC_BASE_URL=https://burgerprice.com
             GOOGLE_CLOUD_PROJECT=gen-lang-client-0405402450
             GOOGLE_CLOUD_LOCATION=us-central1
-            GEMINI_MODEL=gemini-2.0-flash
+            GEMINI_MODEL=gemini-2.5-flash
           secrets: |-
             DATABASE_URL=DATABASE_URL:latest
             CRON_SECRET=CRON_SECRET:latest

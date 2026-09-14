@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
 
     const weekOf = getMonday(new Date()).toISOString().split("T")[0];
     const results: Record<string, number> = {};
+    const errors: Record<string, string> = {};
     const collectedCities: Array<{
       id: string;
       slug: string;
@@ -126,8 +127,10 @@ export async function GET(request: NextRequest) {
 
         revalidatePath(`/cities/${city.slug}`);
         await sleep(500);
-      } catch {
+      } catch (err) {
         results[city.slug] = -2; // Error
+        const msg = err instanceof Error ? err.message : String(err);
+        errors[city.slug] = msg.slice(0, 200);
       }
     }
 
@@ -236,6 +239,7 @@ export async function GET(request: NextRequest) {
       newsletter_status: newsletterStatus,
       purchasing_power_status: ppStatus,
       results,
+      ...(Object.keys(errors).length > 0 ? { errors } : {}),
     });
   } catch (err) {
     console.error("Collection failed:", err);
