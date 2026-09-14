@@ -8,6 +8,8 @@ import {
   generateIndustryNews,
   generateNewsletter,
 } from "@/lib/deepseek";
+import { createCollectStore } from "@/lib/collect-store";
+import { resolveLlmProvider } from "@/lib/llm";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -22,11 +24,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let aiProvider: string;
   try {
-    const { supabaseAdmin: supabase } = await import("@/lib/supabase-admin");
+    aiProvider = resolveLlmProvider();
+  } catch (err) {
+    return NextResponse.json(
+      {
+        error: "LLM not configured",
+        detail: err instanceof Error ? err.message : "unknown",
+      },
+      { status: 500 },
+    );
+  }
 
-    // Get cities
-    const { data: cities } = await supabase.from("cities").select("*");
+  try {
+    const store = await createCollectStore();
+    const cities = await store.listCities();
     if (!cities || cities.length === 0) {
       return NextResponse.json(
         { error: "No cities configured" },
@@ -37,6 +50,8 @@ export async function GET(request: NextRequest) {
     const weekOf = getMonday(new Date()).toISOString().split("T")[0];
     const results: Record<string, number> = {};
     const collectedCities: Array<{
+      id: string;
+      slug: string;
       name: string;
       state: string;
       bpi: number;
@@ -47,47 +62,23 @@ export async function GET(request: NextRequest) {
 
     for (const city of cities) {
       try {
-        // Check if already collected this week
-        const { data: existing } = await supabase
-          .from("bpi_snapshots")
-          .select("id")
-          .eq("city_id", city.id)
-          .eq("week_of", weekOf)
-          .single();
-
-        if (existing) {
+        if (await store.hasSnapshot(city.id, weekOf)) {
           results[city.slug] = -1; // Already exists
           continue;
         }
 
-        // Research prices
         const prices = await researchBurgerPrices(city.name, city.state);
         if (prices.length === 0) {
           results[city.slug] = 0; // No prices returned
           continue;
         }
 
-        // Calculate BPI
         const bpiScore = calculateBpi(prices);
         const extremes = findExtremes(prices);
+        const prevBpi = await store.getPrevBpi(city.id, weekOf);
+        const changePct = calculateChange(bpiScore, prevBpi);
 
-        // Get previous week's BPI for change calculation
-        const { data: prevSnapshot } = await supabase
-          .from("bpi_snapshots")
-          .select("bpi_score")
-          .eq("city_id", city.id)
-          .lt("week_of", weekOf)
-          .order("week_of", { ascending: false })
-          .limit(1)
-          .single();
-
-        const changePct = calculateChange(
-          bpiScore,
-          prevSnapshot ? Number(prevSnapshot.bpi_score) : null,
-        );
-
-        // Insert snapshot
-        await supabase.from("bpi_snapshots").insert({
+        await store.insertSnapshot({
           city_id: city.id,
           week_of: weekOf,
           bpi_score: bpiScore,
@@ -104,13 +95,12 @@ export async function GET(request: NextRequest) {
           raw_prices: prices,
         });
 
-        // Generate spotlight
         const spotlight = await generateSpotlight(
           city.name,
           city.state,
           prices,
         );
-        await supabase.from("burger_spotlight").insert({
+        await store.insertSpotlight({
           city_id: city.id,
           week_of: weekOf,
           restaurant_name: spotlight.restaurantName,
@@ -121,6 +111,8 @@ export async function GET(request: NextRequest) {
 
         results[city.slug] = bpiScore;
         collectedCities.push({
+          id: city.id,
+          slug: city.slug,
           name: city.name,
           state: city.state,
           bpi: bpiScore,
@@ -135,35 +127,26 @@ export async function GET(request: NextRequest) {
           },
         });
 
-        // Revalidate city page
         revalidatePath(`/cities/${city.slug}`);
-
-        // Brief delay between cities to avoid DeepSeek rate limits
         await sleep(500);
       } catch {
-        // One city failing doesn't stop the rest
         results[city.slug] = -2; // Error
       }
     }
 
-    // Generate market report if we collected at least 2 cities
     if (collectedCities.length >= 2) {
       try {
         const report = await generateMarketReport({
           cities: collectedCities,
         });
 
-        await supabase.from("market_reports").upsert(
-          {
-            week_of: weekOf,
-            headline: report.headline,
-            summary: report.summary,
-            factors: report.factors,
-          },
-          { onConflict: "week_of" },
-        );
+        await store.upsertMarketReport({
+          week_of: weekOf,
+          headline: report.headline,
+          summary: report.summary,
+          factors: report.factors,
+        });
 
-        // Generate industry news
         const newsItems = await generateIndustryNews({
           cities: collectedCities.map((c) => ({
             name: c.name,
@@ -174,14 +157,13 @@ export async function GET(request: NextRequest) {
         });
 
         for (const item of newsItems) {
-          await supabase.from("industry_news").insert(item);
+          await store.insertIndustryNews(item);
         }
       } catch {
         // Report/news generation failure is non-fatal
       }
     }
 
-    // Compute purchasing power
     let ppStatus = "skipped";
     if (collectedCities.length >= 1) {
       try {
@@ -189,33 +171,20 @@ export async function GET(request: NextRequest) {
         const wages = getAllWages();
 
         for (const cityData of collectedCities) {
-          const slug = `${cityData.name.toLowerCase().replace(/\s+/g, "-")}-${cityData.state.toLowerCase()}`;
-          const wage = wages[slug];
+          const wage = wages[cityData.slug];
           if (!wage || cityData.bpi <= 0) continue;
 
           const burgersPerHour =
             Math.round((wage.min_wage / cityData.bpi) * 100) / 100;
 
-          // Find city_id from cities table
-          const { data: cityRow } = await supabase
-            .from("cities")
-            .select("id")
-            .eq("slug", slug)
-            .single();
-
-          if (!cityRow) continue;
-
-          await supabase.from("purchasing_power").upsert(
-            {
-              city_id: cityRow.id,
-              week_of: weekOf,
-              min_wage: wage.min_wage,
-              avg_bpi: cityData.bpi,
-              burgers_per_hour: burgersPerHour,
-              wage_source: wage.source,
-            },
-            { onConflict: "city_id,week_of" },
-          );
+          await store.upsertPurchasingPower({
+            city_id: cityData.id,
+            week_of: weekOf,
+            min_wage: wage.min_wage,
+            avg_bpi: cityData.bpi,
+            burgers_per_hour: burgersPerHour,
+            wage_source: wage.source,
+          });
         }
         ppStatus = "computed";
       } catch {
@@ -223,19 +192,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Generate newsletter if we have enough data
     let newsletterStatus = "skipped";
     if (collectedCities.length >= 2) {
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          // Check if newsletter already exists for this week
-          const { data: existingNl } = await supabase
-            .from("newsletters")
-            .select("id")
-            .eq("week_of", weekOf)
-            .single();
-
-          if (existingNl) {
+          if (await store.hasNewsletter(weekOf)) {
             newsletterStatus = "exists";
             break;
           }
@@ -245,7 +206,7 @@ export async function GET(request: NextRequest) {
             weekOf,
           });
 
-          await supabase.from("newsletters").insert({
+          await store.insertNewsletter({
             week_of: weekOf,
             headline: newsletter.headline,
             sections: newsletter,
@@ -265,20 +226,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Revalidate homepage and cities index
     revalidatePath("/");
     revalidatePath("/cities");
 
     return NextResponse.json({
       status: "collected",
       week_of: weekOf,
+      data_mode: store.mode,
+      ai_provider: aiProvider,
       cities_collected: collectedCities.length,
       cities_total: cities.length,
       newsletter_status: newsletterStatus,
       purchasing_power_status: ppStatus,
       results,
     });
-  } catch {
+  } catch (err) {
+    console.error("Collection failed:", err);
     return NextResponse.json({ error: "Collection failed" }, { status: 500 });
   }
 }
