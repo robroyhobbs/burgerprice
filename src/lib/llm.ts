@@ -87,6 +87,18 @@ async function callGeminiJson(
   const location =
     process.env.GOOGLE_CLOUD_LOCATION?.trim() || "us-central1";
 
+  // Gemini 3.x: omit temperature/topP/topK; use thinkingLevel for latency.
+  // Gemini 2.x: keep temperature for reachable older models.
+  const isGemini3 = model.startsWith("gemini-3.");
+  const generationConfig: Record<string, unknown> = {
+    responseMimeType: "application/json",
+  };
+  if (isGemini3) {
+    generationConfig.thinkingConfig = { thinkingLevel: "LOW" };
+  } else {
+    generationConfig.temperature = 0.7;
+  }
+
   const body = {
     systemInstruction: {
       parts: [{ text: systemPrompt }],
@@ -97,10 +109,7 @@ async function callGeminiJson(
         parts: [{ text: userPrompt }],
       },
     ],
-    generationConfig: {
-      temperature: 0.7,
-      responseMimeType: "application/json",
-    },
+    generationConfig,
   };
 
   let url: string;
@@ -110,10 +119,16 @@ async function callGeminiJson(
 
   if (project) {
     // Vertex AI on Cloud Run: ADC via metadata server (no API key secret).
+    // Global endpoint host is aiplatform.googleapis.com (not global-aiplatform…).
+    // Regional locations keep ${location}-aiplatform.googleapis.com.
     const token = await getGcpAccessToken();
     headers.Authorization = `Bearer ${token}`;
+    const host =
+      location === "global"
+        ? "https://aiplatform.googleapis.com"
+        : `https://${location}-aiplatform.googleapis.com`;
     url =
-      `https://${location}-aiplatform.googleapis.com/v1/projects/${project}` +
+      `${host}/v1/projects/${project}` +
       `/locations/${location}/publishers/google/models/${model}:generateContent`;
   } else if (apiKey) {
     url =
