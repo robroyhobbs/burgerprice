@@ -81,8 +81,8 @@ jobs:
             REQUIRE_DATABASE=true
             NEXT_PUBLIC_BASE_URL=https://burgerprice.com
             GOOGLE_CLOUD_PROJECT=gen-lang-client-0405402450
-            GOOGLE_CLOUD_LOCATION=us-central1
-            GEMINI_MODEL=gemini-2.5-flash
+            GOOGLE_CLOUD_LOCATION=global
+            GEMINI_MODEL=gemini-3.7-flash
           secrets: |-
             DATABASE_URL=DATABASE_URL:latest
             CRON_SECRET=CRON_SECRET:latest
@@ -91,6 +91,7 @@ jobs:
             --cpu=1
             --memory=512Mi
             --min-instances=0
+            --timeout=900
             --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }}
             --service-account=${{ env.RUNTIME_SA }}
 
