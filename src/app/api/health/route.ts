@@ -8,20 +8,25 @@ export async function GET() {
   let dbStatus: "connected" | "disconnected" | "error" = "disconnected";
   let citiesCount = 0;
   let snapshotsCount = 0;
+  let latestWeek: string | null = null;
   let effectiveMode = mode;
   let databaseError: string | undefined;
 
   if (mode === "database") {
     try {
       const { query } = await import("@/lib/db");
-      const [citiesRes, snapshotsRes] = await Promise.all([
+      const [citiesRes, snapshotsRes, latestRes] = await Promise.all([
         query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM cities`),
         query<{ count: string }>(
           `SELECT COUNT(*)::text AS count FROM bpi_snapshots`,
         ),
+        query<{ latest_week: string | null }>(
+          `SELECT MAX(week_of)::text AS latest_week FROM bpi_snapshots`,
+        ),
       ]);
       citiesCount = Number(citiesRes.rows[0]?.count ?? 0);
       snapshotsCount = Number(snapshotsRes.rows[0]?.count ?? 0);
+      latestWeek = latestRes.rows[0]?.latest_week ?? null;
       dbStatus = "connected";
       effectiveMode = "database";
     } catch (err) {
@@ -45,6 +50,15 @@ export async function GET() {
         .select("*", { count: "exact", head: true });
       snapshotsCount = sCount ?? 0;
 
+      const { data: latestRows } = await supabase
+        .from("bpi_snapshots")
+        .select("week_of")
+        .order("week_of", { ascending: false })
+        .limit(1);
+      latestWeek = latestRows?.[0]?.week_of
+        ? String(latestRows[0].week_of)
+        : null;
+
       dbStatus = "connected";
     } catch {
       dbStatus = "error";
@@ -60,6 +74,7 @@ export async function GET() {
     database_required: databaseRequired,
     cities: citiesCount,
     snapshots_count: snapshotsCount,
+    latest_week: latestWeek,
     timestamp: new Date().toISOString(),
   });
 }

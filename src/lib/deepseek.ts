@@ -4,54 +4,18 @@ import type {
   IndustryNewsItem,
   NewsletterContent,
 } from "./types";
-
-const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
-
-interface DeepSeekResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
-}
+import { callJsonLlm } from "./llm";
 
 async function callDeepSeek(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    throw new Error("DEEPSEEK_API_KEY environment variable is required");
-  }
-
-  const response = await fetch(DEEPSEEK_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`DeepSeek API error ${response.status}: ${text}`);
-  }
-
-  const data: DeepSeekResponse = await response.json();
-  return data.choices[0]?.message?.content ?? "";
+  // Name retained for call sites; transport picks Gemini (prod) or DeepSeek.
+  return callJsonLlm(systemPrompt, userPrompt);
 }
 
 /**
- * Research burger prices for a given city using DeepSeek.
+ * Research burger prices for a given city using the configured LLM.
  */
 export async function researchBurgerPrices(
   city: string,
@@ -101,12 +65,12 @@ Return as JSON: {"prices": [...]}`;
     // Filter outliers
     return prices.filter((p) => p.price >= 1 && p.price <= 50);
   } catch {
-    throw new Error("Failed to parse DeepSeek response as valid price data");
+    throw new Error("Failed to parse LLM response as valid price data");
   }
 }
 
 /**
- * Generate weekly market report commentary using DeepSeek.
+ * Generate weekly market report commentary using the configured LLM.
  */
 export async function generateMarketReport(data: {
   cities: Array<{
@@ -170,12 +134,12 @@ Include exactly 3 market factors.`;
       })),
     };
   } catch {
-    throw new Error("Failed to parse DeepSeek market report response");
+    throw new Error("Failed to parse LLM market report response");
   }
 }
 
 /**
- * Generate a "Burger of the Week" spotlight using DeepSeek.
+ * Generate a "Burger of the Week" spotlight using the configured LLM.
  */
 export async function generateSpotlight(
   city: string,
@@ -216,7 +180,7 @@ Pick the most interesting, best value, or most notable burger. Return JSON:
       description: String(parsed.description || "This week's top pick."),
     };
   } catch {
-    throw new Error("Failed to parse DeepSeek spotlight response");
+    throw new Error("Failed to parse LLM spotlight response");
   }
 }
 
@@ -279,12 +243,12 @@ Return JSON:
         : "neutral") as IndustryNewsItem["impact"],
     }));
   } catch {
-    throw new Error("Failed to parse DeepSeek industry news response");
+    throw new Error("Failed to parse LLM industry news response");
   }
 }
 
 /**
- * Generate a full weekly newsletter edition using DeepSeek.
+ * Generate a full weekly newsletter edition using the configured LLM.
  * Returns structured content with all 6 sections in mockumentary financial style.
  */
 export async function generateNewsletter(data: {
@@ -453,6 +417,6 @@ Include 3-5 movers in theTape. All commentary should be deadpan financial analys
 
     return content;
   } catch {
-    throw new Error("Failed to parse DeepSeek newsletter response");
+    throw new Error("Failed to parse LLM newsletter response");
   }
 }
