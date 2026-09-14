@@ -10,17 +10,14 @@ import {
 } from "@/lib/deepseek";
 import { createCollectStore } from "@/lib/collect-store";
 import { resolveLlmProvider } from "@/lib/llm";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
