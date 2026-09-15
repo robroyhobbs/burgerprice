@@ -3,15 +3,59 @@ import {
   getAllNewsletters,
 } from "@/lib/newsletter-data";
 import { NewsletterEdition } from "@/components/newsletter-edition";
+import { ShareStrip } from "@/components/share-strip";
+import {
+  buildNewsletterCaption,
+  newsletterOgPath,
+  newsletterShareUrl,
+} from "@/lib/share";
+import { getSiteBaseUrl } from "@/lib/json-ld";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 export const revalidate = 3600;
 
-export const metadata = {
-  title: "BPI Weekly Newsletter | Burger Price Index",
-  description:
-    "The weekly Burger Price Index market report. Financial analysis of burger prices across 10 US cities, delivered with the gravitas of a Wall Street trading desk.",
-};
+const TITLE = "BPI Weekly Newsletter | Burger Price Index";
+const DESCRIPTION =
+  "The weekly Burger Price Index market report. Financial analysis of burger prices across 10 US cities, delivered with the gravitas of a Wall Street trading desk.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const latest = await getLatestNewsletter();
+  const weekOf = latest?.week_of;
+  const ogImage = newsletterOgPath(weekOf);
+  const canonical = `${getSiteBaseUrl()}/newsletter`;
+  const title = latest?.headline
+    ? `${latest.headline} | BPI Weekly`
+    : TITLE;
+  const description = latest?.headline
+    ? `BPI Weekly — week of ${latest.week_of}: ${latest.headline}`
+    : DESCRIPTION;
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: "BPI Weekly Newsletter",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
 
 export default async function NewsletterPage() {
   const [latest, allEditions] = await Promise.all([
@@ -46,6 +90,12 @@ export default async function NewsletterPage() {
     (e) => e.week_of !== latest.week_of,
   );
 
+  const shareUrl = newsletterShareUrl(latest.week_of);
+  const caption = buildNewsletterCaption({
+    weekOf: latest.week_of,
+    headline: latest.headline,
+  });
+
   return (
     <div className="min-h-screen bg-[#080810] py-10 px-6">
       {/* Breadcrumb */}
@@ -64,6 +114,14 @@ export default async function NewsletterPage() {
         headline={latest.headline}
         sections={latest.sections}
       />
+
+      <div className="max-w-4xl mx-auto">
+        <ShareStrip
+          shareUrl={shareUrl}
+          caption={caption}
+          label="SHARE THE PRINT"
+        />
+      </div>
 
       {/* Archive */}
       {pastEditions.length > 0 && (
