@@ -116,3 +116,25 @@ export function buildNationalCaption(opts: {
 
   return `National BPI: $${opts.avgBpi.toFixed(2)}${changeText} — week of ${week}.${extremes}${coverage} Bloomberg Terminal energy, Wendy's drive-thru prices — ${nationalShareUrl()}`;
 }
+
+export function newsletterShareUrl(weekOf?: string): string {
+  if (weekOf) {
+    return `${getShareBaseUrl()}/newsletter/${weekOf}`;
+  }
+  return `${getShareBaseUrl()}/newsletter`;
+}
+
+export function newsletterOgPath(weekOf?: string): string {
+  if (weekOf) {
+    return `/api/og?newsletter=1&week=${encodeURIComponent(weekOf)}`;
+  }
+  return "/api/og?newsletter=1";
+}
+
+export function buildNewsletterCaption(opts: {
+  weekOf: string;
+  headline: string;
+}): string {
+  const week = formatWeekShort(opts.weekOf);
+  return `BPI Weekly — week of ${week}: "${opts.headline}" The tape doesn't care about your feelings. Read the print: ${newsletterShareUrl(opts.weekOf)}`;
+}

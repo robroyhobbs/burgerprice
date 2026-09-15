@@ -438,6 +438,78 @@ function ShowdownCard(props: {
   );
 }
 
+
+function NewsletterCard(props: {
+  headline: string;
+  weekOf?: string;
+}) {
+  const weekLabel = props.weekOf
+    ? `Week of ${formatWeek(props.weekOf)}`
+    : "Weekly Edition";
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#1A1A2E",
+        color: "white",
+        padding: "48px 64px",
+      }}
+    >
+      <BrandHeader />
+      <div
+        style={{
+          display: "flex",
+          fontSize: 18,
+          color: "#DAA520",
+          textTransform: "uppercase",
+          letterSpacing: "0.2em",
+          marginBottom: 16,
+        }}
+      >
+        BPI Weekly
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          flex: 1,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            fontSize: 48,
+            fontWeight: "bold",
+            lineHeight: 1.2,
+            letterSpacing: "-0.01em",
+            maxWidth: 1000,
+          }}
+        >
+          {props.headline}
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span style={{ display: "flex", fontSize: 16, color: "#6B7280" }}>
+          {weekLabel}
+        </span>
+        <span style={{ display: "flex", fontSize: 16, color: "#DAA520" }}>
+          burgerprice.com
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const citySlug = searchParams.get("city");
@@ -445,6 +517,8 @@ export async function GET(request: NextRequest) {
   const showdownParam = searchParams.get("showdown");
   const leftSlugParam = searchParams.get("left");
   const rightSlugParam = searchParams.get("right");
+  const newsletterParam = searchParams.get("newsletter");
+  const weekParam = searchParams.get("week");
   const showdownMode = isShowdownRequest({
     showdown: showdownParam,
     type,
@@ -453,6 +527,41 @@ export async function GET(request: NextRequest) {
   });
 
   try {
+    // Newsletter edition card — before showdown/city/national
+    if (newsletterParam === "1" || newsletterParam === "true") {
+      const fallbackHeadline =
+        "The weekly market report. Burgers priced. Feelings ignored.";
+      let headline = fallbackHeadline;
+      let weekOf = weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam)
+        ? weekParam
+        : undefined;
+
+      try {
+        if (weekOf) {
+          const { getNewsletterByWeek } = await import("@/lib/newsletter-data");
+          const edition = await getNewsletterByWeek(weekOf);
+          if (edition?.headline) {
+            headline = edition.headline;
+            weekOf = edition.week_of;
+          }
+        } else {
+          const { getLatestNewsletter } = await import("@/lib/newsletter-data");
+          const edition = await getLatestNewsletter();
+          if (edition?.headline) {
+            headline = edition.headline;
+            weekOf = edition.week_of;
+          }
+        }
+      } catch {
+        // Keep static fallback — never fail the OG card.
+      }
+
+      return new ImageResponse(
+        <NewsletterCard headline={headline} weekOf={weekOf} />,
+        { width: 1200, height: 630 },
+      );
+    }
+
     // Explicit city pair / weekly showdown before single-city card
     if (showdownMode) {
       const data = await getDashboardData();
