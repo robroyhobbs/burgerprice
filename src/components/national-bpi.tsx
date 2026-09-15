@@ -2,12 +2,22 @@
 
 import type { NationalBpiPoint } from "@/lib/types";
 import { Sparkline } from "./sparkline";
+import { ShareStrip } from "./share-strip";
+import { buildNationalCaption, nationalShareUrl } from "@/lib/share";
 
 interface NationalBpiProps {
   history: NationalBpiPoint[];
+  /** Lowest-BPI city name for share caption (optional). */
+  cheapestCity?: string | null;
+  /** Highest-BPI city name for share caption (optional). */
+  mostExpensiveCity?: string | null;
 }
 
-export function NationalBpi({ history }: NationalBpiProps) {
+export function NationalBpi({
+  history,
+  cheapestCity = null,
+  mostExpensiveCity = null,
+}: NationalBpiProps) {
   if (history.length === 0) return null;
 
   const current = history[history.length - 1];
@@ -20,6 +30,16 @@ export function NationalBpi({ history }: NationalBpiProps) {
 
   const isUp = change !== null && change > 0;
   const isDown = change !== null && change < 0;
+
+  const shareUrl = nationalShareUrl();
+  const caption = buildNationalCaption({
+    weekOf: current.week_of,
+    avgBpi: current.avg_bpi,
+    changePct: change,
+    cityCount: current.city_count,
+    cheapestCity,
+    mostExpensiveCity,
+  });
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-8 pb-2">
@@ -72,6 +92,13 @@ export function NationalBpi({ history }: NationalBpiProps) {
             <Sparkline data={history} width={280} height={60} />
           </div>
         </div>
+
+        <ShareStrip
+          className="!mt-6"
+          shareUrl={shareUrl}
+          caption={caption}
+          label="Share the national print"
+        />
       </div>
     </section>
   );

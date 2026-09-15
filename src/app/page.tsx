@@ -78,6 +78,18 @@ export default async function Home({ searchParams }: HomeProps) {
   const nationalHistory = getNationalBpiHistory(data.cities);
   const spread = getSpreadData(data.cities);
 
+  // Cheapest / priciest cities by current BPI (for national share caption)
+  const rankedByBpi = data.cities
+    .map((c) => ({
+      name: c.city.name,
+      bpi: c.currentSnapshot?.bpi_score ?? null,
+    }))
+    .filter((c): c is { name: string; bpi: number } => c.bpi != null)
+    .sort((a, b) => a.bpi - b.bpi);
+  const cheapestCity = rankedByBpi[0]?.name ?? null;
+  const mostExpensiveCity =
+    rankedByBpi.length > 0 ? rankedByBpi[rankedByBpi.length - 1].name : null;
+
   // Pick 2 showdown cities based on current week (deterministic rotation)
   const [idx1, idx2] = getShowdownIndices(data.weekOf, data.cities.length);
   const showdownCities = [data.cities[idx1], data.cities[idx2]].filter(Boolean);
@@ -90,7 +102,11 @@ export default async function Home({ searchParams }: HomeProps) {
     <div className="min-h-screen bg-paper dark:bg-grill">
       <Header cities={data.cities} />
       <main className="space-y-6 md:space-y-10">
-        <NationalBpi history={nationalHistory} />
+        <NationalBpi
+          history={nationalHistory}
+          cheapestCity={cheapestCity}
+          mostExpensiveCity={mostExpensiveCity}
+        />
         <CityShowdown cities={showdownCities} weekOf={data.weekOf} />
         <Leaderboard cities={data.cities} />
         <CandlestickChart cities={trendCities} />
