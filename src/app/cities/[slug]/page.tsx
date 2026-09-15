@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getCityBySlug, getAllCities, getAllCitySlugs } from "@/lib/data";
+import { buildCityPageJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
 import { CityProfile } from "@/components/city-profile";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
@@ -28,13 +29,16 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
     bpi ? `$${bpi.toFixed(2)}${changeText}` : "collecting data"
   }. See restaurant prices, trends, and national comparison.`;
   const ogImage = `/api/og?city=${data.city.slug}`;
+  const canonical = `${getSiteBaseUrl()}/cities/${data.city.slug}`;
 
   return {
     title,
     description,
+    alternates: { canonical },
     openGraph: {
       title,
       description,
+      url: canonical,
       images: [
         {
           url: ogImage,
@@ -75,9 +79,14 @@ export default async function CityPage({ params }: CityPageProps) {
   const allCities = await getAllCities();
   const nationalAvg = calculateNationalAverage(allCities);
   const rank = calculateRank(allCities, cityData.city.slug);
+  const jsonLd = buildCityPageJsonLd(cityData);
 
   return (
     <div className="min-h-screen bg-paper dark:bg-grill">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Header cities={[cityData]} />
       <main>
         <CityProfile data={cityData} nationalAvg={nationalAvg} rank={rank} totalCities={allCities.length} />
