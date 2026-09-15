@@ -76,3 +76,43 @@ export function buildCityCaption(opts: {
       : ` (${opts.changePct > 0 ? "+" : ""}${opts.changePct.toFixed(1)}% WoW)`;
   return `${opts.name}, ${opts.state} BPI: ${bpiText}${changeText}. Bloomberg Terminal energy, Wendy's drive-thru prices — ${cityShareUrl(opts.slug)}`;
 }
+
+export function nationalShareUrl(): string {
+  return `${getShareBaseUrl()}/`;
+}
+
+export function buildNationalCaption(opts: {
+  weekOf: string;
+  avgBpi: number;
+  changePct?: number | null;
+  cityCount?: number;
+  /** Lowest-BPI city name (value trade). */
+  cheapestCity?: string | null;
+  /** Highest-BPI city name (premium print). */
+  mostExpensiveCity?: string | null;
+}): string {
+  const week = formatWeekShort(opts.weekOf);
+  const changeText =
+    opts.changePct == null || Number.isNaN(opts.changePct)
+      ? ""
+      : ` (${opts.changePct > 0 ? "+" : ""}${opts.changePct.toFixed(1)}% WoW)`;
+
+  let extremes = "";
+  if (opts.cheapestCity && opts.mostExpensiveCity) {
+    extremes =
+      opts.cheapestCity === opts.mostExpensiveCity
+        ? ` ${opts.cheapestCity} holds both ends of the tape.`
+        : ` ${opts.cheapestCity} is the value trade; ${opts.mostExpensiveCity} prints the premium.`;
+  } else if (opts.cheapestCity) {
+    extremes = ` ${opts.cheapestCity} is the value trade this week.`;
+  } else if (opts.mostExpensiveCity) {
+    extremes = ` ${opts.mostExpensiveCity} prints the premium this week.`;
+  }
+
+  const coverage =
+    opts.cityCount && opts.cityCount > 0
+      ? ` Avg across ${opts.cityCount} cities.`
+      : "";
+
+  return `National BPI: $${opts.avgBpi.toFixed(2)}${changeText} — week of ${week}.${extremes}${coverage} Bloomberg Terminal energy, Wendy's drive-thru prices — ${nationalShareUrl()}`;
+}
