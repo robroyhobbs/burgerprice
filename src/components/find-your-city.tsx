@@ -34,7 +34,7 @@ export function FindYourCity({ cities }: FindYourCityProps) {
   }
 
   return (
-    <section className="max-w-7xl mx-auto px-6 py-10">
+    <section id="find-your-city" className="max-w-7xl mx-auto px-6 py-10 scroll-mt-20">
       <div className="flex items-center gap-3 mb-8">
         <div className="w-10 h-10 rounded-xl bg-ketchup/10 dark:bg-mustard/10 flex items-center justify-center text-lg">
           📍
