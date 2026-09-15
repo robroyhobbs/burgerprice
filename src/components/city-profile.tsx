@@ -3,7 +3,13 @@
 import type { CityDashboardData, RawPrice } from "@/lib/types";
 import { getRestaurantUrl } from "@/lib/restaurant-utils";
 import { getMinimumWage } from "@/lib/wages";
-import { buildCityRead } from "@/lib/city-readout";
+import {
+  buildCityRead,
+  buildTapeStory,
+  formatTapeWeek,
+  sliceRecentTape,
+} from "@/lib/city-readout";
+import { TrendArrow } from "./ui/trend-arrow";
 import { CandlestickChart } from "./candlestick-chart";
 import { BurgerSpotlight } from "./burger-spotlight";
 import Link from "next/link";
@@ -64,6 +70,10 @@ export function CityProfile({
     nationalAvg,
     diffFromNational,
   });
+
+  // Reuse the same ascending history the candlestick chart already charts.
+  const tapePrints = sliceRecentTape(data.history, 5);
+  const tapeStory = buildTapeStory(city.name, tapePrints);
 
   const wage = getMinimumWage(city.slug);
   const burgersPerHour =
@@ -188,6 +198,60 @@ export function CityProfile({
           <p className="text-base md:text-lg text-gray-800 dark:text-gray-200 leading-relaxed">
             {theRead}
           </p>
+        </div>
+      )}
+
+      {/* ON THE TAPE — recent weeks WoW strip (same history as chart) */}
+      {tapePrints.length >= 2 && (
+        <div className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-6 mb-8">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-ketchup dark:text-mustard">
+              On the Tape
+            </span>
+            <span className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">
+              Last {tapePrints.length} weeks
+            </span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {tapePrints.map((print, i) => {
+              const isLatest = i === tapePrints.length - 1;
+              return (
+                <div
+                  key={print.weekOf}
+                  className={`flex-shrink-0 min-w-[6.5rem] rounded-xl border px-3 py-2.5 ${
+                    isLatest
+                      ? "border-ketchup/30 dark:border-mustard/30 bg-ketchup/5 dark:bg-mustard/5"
+                      : "border-gray-100 dark:border-grill-lighter bg-gray-50/80 dark:bg-grill/40"
+                  }`}
+                >
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">
+                    {formatTapeWeek(print.weekOf)}
+                  </div>
+                  <div
+                    className={`bpi-number text-lg font-bold ${
+                      isLatest
+                        ? "text-ketchup dark:text-mustard"
+                        : "text-gray-900 dark:text-white"
+                    }`}
+                  >
+                    ${print.bpi.toFixed(2)}
+                  </div>
+                  <div className="mt-1">
+                    {i === 0 && print.changePct == null ? (
+                      <span className="text-[10px] text-gray-400">open</span>
+                    ) : (
+                      <TrendArrow change={print.changePct} size="sm" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {tapeStory && (
+            <p className="mt-4 text-sm md:text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
+              {tapeStory}
+            </p>
+          )}
         </div>
       )}
 
