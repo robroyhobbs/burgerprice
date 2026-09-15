@@ -33,11 +33,14 @@ export const metadata: Metadata = {
   title: "Burger Price Index | The Financial Index for Burger Lovers",
   description:
     "Track burger prices across US cities with the BPI. Weekly national index, city showdowns, market reports, and the Burger of the Week.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Burger Price Index",
     description:
       "The Bloomberg Terminal of burgers. Live national BPI across US cities — updated weekly.",
-    url: baseUrl,
+    url: "/",
     siteName: "Burger Price Index",
     type: "website",
     images: [
