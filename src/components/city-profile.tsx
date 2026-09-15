@@ -2,16 +2,32 @@
 
 import type { CityDashboardData, RawPrice } from "@/lib/types";
 import { getRestaurantUrl } from "@/lib/restaurant-utils";
+import { getMinimumWage } from "@/lib/wages";
+import { buildCityRead } from "@/lib/city-readout";
 import { CandlestickChart } from "./candlestick-chart";
+import { BurgerSpotlight } from "./burger-spotlight";
 import Link from "next/link";
 import { ShareStrip } from "./share-strip";
 import { buildCityCaption, cityShareUrl } from "@/lib/share";
+
+export interface PeerCity {
+  name: string;
+  state: string;
+  slug: string;
+  bpi: number;
+}
 
 interface CityProfileProps {
   data: CityDashboardData;
   nationalAvg: number | null;
   rank: number;
   totalCities: number;
+  peerCities?: PeerCity[];
+}
+
+function findWebsite(name: string, prices: RawPrice[]): string | null {
+  const match = prices.find((p) => p.restaurant === name && p.website);
+  return match?.website ?? null;
 }
 
 export function CityProfile({
@@ -19,8 +35,9 @@ export function CityProfile({
   nationalAvg,
   rank,
   totalCities,
+  peerCities = [],
 }: CityProfileProps) {
-  const { city, currentSnapshot } = data;
+  const { city, currentSnapshot, spotlight } = data;
   const bpi = currentSnapshot?.bpi_score ?? null;
   const change = currentSnapshot?.change_pct ?? null;
   const rawPrices = (currentSnapshot?.raw_prices ?? []) as RawPrice[];
@@ -36,6 +53,22 @@ export function CityProfile({
   const diffFromNational =
     bpi !== null && nationalAvg !== null
       ? Math.round(((bpi - nationalAvg) / nationalAvg) * 1000) / 10
+      : null;
+
+  const theRead = buildCityRead({
+    name: city.name,
+    bpi,
+    changePct: change,
+    rank,
+    totalCities,
+    nationalAvg,
+    diffFromNational,
+  });
+
+  const wage = getMinimumWage(city.slug);
+  const burgersPerHour =
+    wage && bpi != null && bpi > 0
+      ? Math.round((wage.min_wage / bpi) * 100) / 100
       : null;
 
   return (
@@ -144,6 +177,167 @@ export function CityProfile({
         </div>
       )}
 
+      {/* THE READ */}
+      {theRead && (
+        <div className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-6 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-ketchup dark:text-mustard">
+              The Read
+            </span>
+          </div>
+          <p className="text-base md:text-lg text-gray-800 dark:text-gray-200 leading-relaxed">
+            {theRead}
+          </p>
+        </div>
+      )}
+
+      {/* Value Trade / Premium Print (+ BOTW when present) */}
+      {currentSnapshot && (
+        <div className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="text-center p-4 rounded-2xl bg-lettuce/5 dark:bg-lettuce/10 border border-lettuce/10">
+              <div className="text-[10px] uppercase tracking-widest text-lettuce dark:text-lettuce-light font-medium mb-2">
+                Value Trade
+              </div>
+              <div className="bpi-number text-2xl font-bold text-lettuce dark:text-lettuce-light">
+                ${currentSnapshot.cheapest_price.toFixed(2)}
+              </div>
+              <div
+                className="text-xs truncate mt-1"
+                title={currentSnapshot.cheapest_restaurant}
+              >
+                <a
+                  href={getRestaurantUrl(
+                    currentSnapshot.cheapest_restaurant,
+                    city.name,
+                    city.state,
+                    findWebsite(currentSnapshot.cheapest_restaurant, rawPrices),
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-lettuce dark:hover:text-lettuce-light transition-colors underline decoration-dotted underline-offset-2"
+                >
+                  {currentSnapshot.cheapest_restaurant}
+                </a>
+              </div>
+            </div>
+            <div className="text-center p-4 rounded-2xl bg-negative/5 dark:bg-negative/10 border border-negative/10">
+              <div className="text-[10px] uppercase tracking-widest text-negative dark:text-red-400 font-medium mb-2">
+                Premium Print
+              </div>
+              <div className="bpi-number text-2xl font-bold text-negative dark:text-red-400">
+                ${currentSnapshot.most_expensive_price.toFixed(2)}
+              </div>
+              <div
+                className="text-xs truncate mt-1"
+                title={currentSnapshot.most_expensive_restaurant}
+              >
+                <a
+                  href={getRestaurantUrl(
+                    currentSnapshot.most_expensive_restaurant,
+                    city.name,
+                    city.state,
+                    findWebsite(
+                      currentSnapshot.most_expensive_restaurant,
+                      rawPrices,
+                    ),
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-negative dark:hover:text-red-400 transition-colors underline decoration-dotted underline-offset-2"
+                >
+                  {currentSnapshot.most_expensive_restaurant}
+                </a>
+              </div>
+            </div>
+          </div>
+          <BurgerSpotlight
+            spotlight={spotlight}
+            cityName={city.name}
+            cityState={city.state}
+            rawPrices={rawPrices}
+          />
+        </div>
+      )}
+
+      {/* Spotlight-only fallback (no snapshot extremes) */}
+      {!currentSnapshot && spotlight && (
+        <div className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-6 mb-8">
+          <BurgerSpotlight
+            spotlight={spotlight}
+            cityName={city.name}
+            cityState={city.state}
+            rawPrices={rawPrices}
+          />
+        </div>
+      )}
+
+      {/* Local Purchasing Power */}
+      {wage && burgersPerHour != null && (
+        <div className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-6 mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-lg">💪</span>
+            <div>
+              <h2 className="font-headline text-lg text-gray-900 dark:text-white">
+                Local Purchasing Power
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Min wage vs the local BPI print
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-end gap-6">
+            <div>
+              <span className="bpi-number text-3xl font-bold text-ketchup dark:text-mustard">
+                {burgersPerHour.toFixed(1)}
+              </span>
+              <span className="text-sm text-gray-400 ml-2 uppercase tracking-wider">
+                burgers/hr
+              </span>
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              ${wage.min_wage.toFixed(2)}/hr {wage.source} min wage buys{" "}
+              {burgersPerHour.toFixed(1)} of the ${bpi!.toFixed(2)} BPI basket.
+              The market clears; your wallet may not.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Peer cities (closest BPI) */}
+      {peerCities.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400">
+              Peer Prints
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {peerCities.map((peer) => (
+              <Link
+                key={peer.slug}
+                href={`/cities/${peer.slug}`}
+                className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-5 hover:border-ketchup/30 dark:hover:border-mustard/30 transition-all"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-sm text-gray-900 dark:text-white">
+                      {peer.name}, {peer.state}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Closest BPI on the tape
+                    </p>
+                  </div>
+                  <span className="bpi-number text-xl font-bold text-ketchup dark:text-mustard shrink-0">
+                    ${peer.bpi.toFixed(2)}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Trend Chart */}
       <CandlestickChart cities={[data]} />
 
@@ -224,6 +418,19 @@ export function CityProfile({
           </p>
         </div>
       )}
+
+      {/* Methodology footnote */}
+      <p className="mt-10 text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-2xl">
+        BPI is a weighted average of fast-food, casual, and premium burger
+        prices sampled weekly. Not financial advice — just the tape.{" "}
+        <Link
+          href="/about"
+          className="text-ketchup dark:text-mustard hover:underline"
+        >
+          Full methodology
+        </Link>
+        .
+      </p>
     </div>
   );
 }
