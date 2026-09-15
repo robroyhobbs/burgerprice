@@ -1,4 +1,27 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { getSiteBaseUrl } from "@/lib/json-ld";
+
+const TITLE = "About | Burger Price Index";
+const DESCRIPTION =
+  "How the Burger Price Index prices America's favorite economic barometer — weighted fast-food, casual, and gourmet burgers across 10 US cities. Bloomberg Terminal rigor. Wendy's frostiness. Not financial advice.";
+const canonical = `${getSiteBaseUrl()}/about`;
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: canonical,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+};
 
 export default function AboutPage() {
   return (

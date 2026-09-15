@@ -15,12 +15,16 @@ export function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-  // Reinforce HTML rel=canonical for the homepage (trailing-slash form matches metadataBase).
-  if (request.nextUrl.pathname === "/") {
-    response.headers.set(
-      "Link",
-      '<https://burgerprice.com/>; rel="canonical"',
-    );
+  // Reinforce HTML rel=canonical (trailing-slash on homepage matches metadataBase).
+  const pathname = request.nextUrl.pathname;
+  const linkCanonical: Record<string, string> = {
+    "/": "https://burgerprice.com/",
+    "/about": "https://burgerprice.com/about",
+    "/cities": "https://burgerprice.com/cities",
+  };
+  const canonicalHref = linkCanonical[pathname];
+  if (canonicalHref) {
+    response.headers.set("Link", `<${canonicalHref}>; rel="canonical"`);
   }
   return response;
 }
