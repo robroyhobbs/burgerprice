@@ -42,6 +42,8 @@ export function buildShowdownCaption(opts: {
   weekOf: string;
   leftSlug: string;
   rightSlug: string;
+  /** When true, prefix caption with "NEW · " for Monday fresh-print ritual. */
+  fresh?: boolean;
 }): string {
   const week = formatWeekShort(opts.weekOf);
   const gap = Math.abs(opts.leftBpi - opts.rightBpi);
@@ -55,7 +57,8 @@ export function buildShowdownCaption(opts: {
     leader == null
       ? "Locked at parity."
       : `${leader} leads by $${gap.toFixed(2)}.`;
-  return `${opts.leftName} ($${opts.leftBpi.toFixed(2)}) vs ${opts.rightName} ($${opts.rightBpi.toFixed(2)}) — week of ${week}. ${spread} Track it: ${showdownShareUrl(opts.leftSlug, opts.rightSlug)}`;
+  const body = `${opts.leftName} ($${opts.leftBpi.toFixed(2)}) vs ${opts.rightName} ($${opts.rightBpi.toFixed(2)}) — week of ${week}. ${spread} Track it: ${showdownShareUrl(opts.leftSlug, opts.rightSlug)}`;
+  return opts.fresh ? `NEW · ${body}` : body;
 }
 
 export function buildCityCaption(opts: {

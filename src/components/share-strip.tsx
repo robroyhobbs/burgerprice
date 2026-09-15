@@ -7,6 +7,8 @@ interface ShareStripProps {
   caption: string;
   label?: string;
   className?: string;
+  /** Slightly stronger Share button / label weight (e.g. Monday fresh print). */
+  emphasize?: boolean;
 }
 
 type Flash = "link" | "caption" | "shared" | null;
@@ -16,6 +18,7 @@ export function ShareStrip({
   caption,
   label = "Share",
   className = "",
+  emphasize = false,
 }: ShareStripProps) {
   const [flash, setFlash] = useState<Flash>(null);
 
@@ -69,7 +72,11 @@ export function ShareStrip({
     >
       <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-[0.25em] text-gray-400 dark:text-gray-500 font-medium mb-1.5">
+          <p
+            className={`text-[10px] uppercase tracking-[0.25em] text-gray-400 dark:text-gray-500 mb-1.5 ${
+              emphasize ? "font-bold text-ketchup dark:text-mustard" : "font-medium"
+            }`}
+          >
             {label}
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-body">
@@ -95,7 +102,11 @@ export function ShareStrip({
           <button
             type="button"
             onClick={handleShare}
-            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-ketchup to-ketchup-light dark:from-mustard dark:to-mustard-light text-white dark:text-grill px-4 py-2 text-xs font-bold uppercase tracking-wider shadow-md shadow-ketchup/20 dark:shadow-mustard/20 hover:opacity-95 transition-opacity"
+            className={`inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-ketchup to-ketchup-light dark:from-mustard dark:to-mustard-light text-white dark:text-grill px-4 py-2 text-xs uppercase tracking-wider hover:opacity-95 transition-opacity ${
+              emphasize
+                ? "font-extrabold shadow-lg shadow-ketchup/30 dark:shadow-mustard/30 ring-2 ring-ketchup/30 dark:ring-mustard/40"
+                : "font-bold shadow-md shadow-ketchup/20 dark:shadow-mustard/20"
+            }`}
           >
             {flash === "shared" ? "Shared" : "Share"}
           </button>

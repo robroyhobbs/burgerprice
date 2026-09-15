@@ -2,6 +2,7 @@ import type { CityDashboardData } from "@/lib/types";
 import { BpiCard } from "./bpi-card";
 import { ShareStrip } from "./share-strip";
 import { buildShowdownCaption, showdownShareUrl } from "@/lib/share";
+import { isFreshShowdownWeek } from "@/lib/week";
 
 interface CityShowdownProps {
   cities: CityDashboardData[];
@@ -46,6 +47,7 @@ export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
   const isTie = Math.abs(bpi1 - bpi2) < 0.01;
   const weekLabel = weekOf ? formatWeekLabel(weekOf) : null;
   const tagline = showdownTagline(city1, city2);
+  const fresh = weekOf ? isFreshShowdownWeek(weekOf) : false;
 
   const shareUrl = showdownShareUrl(city1.city.slug, city2.city.slug);
   const caption = buildShowdownCaption({
@@ -56,15 +58,26 @@ export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
     weekOf: weekOf || city1.currentSnapshot?.week_of || "",
     leftSlug: city1.city.slug,
     rightSlug: city2.city.slug,
+    fresh,
   });
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-14 pb-6">
       {/* Section header */}
       <div className="text-center mb-12">
-        <p className="text-xs uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500 mb-3 font-medium">
-          Weekly Showdown
-          {weekLabel ? ` · Week of ${weekLabel}` : ""}
+        <p className="text-xs uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500 mb-3 font-medium inline-flex items-center justify-center gap-2 flex-wrap">
+          <span>
+            Weekly Showdown
+            {weekLabel ? ` · Week of ${weekLabel}` : ""}
+          </span>
+          {fresh ? (
+            <span
+              className="inline-flex items-center rounded-full bg-gradient-to-r from-ketchup to-ketchup-light dark:from-mustard dark:to-mustard-light px-2.5 py-0.5 text-[10px] font-bold tracking-[0.2em] text-white dark:text-grill shadow-sm shadow-ketchup/20 dark:shadow-mustard/20"
+              title="This week's print just dropped"
+            >
+              FRESH PRINT
+            </span>
+          ) : null}
         </p>
         <h2 className="font-headline text-3xl md:text-5xl text-gray-900 dark:text-white">
           {city1.city.name}{" "}
@@ -93,7 +106,12 @@ export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
       <ShareStrip
         shareUrl={shareUrl}
         caption={caption}
-        label="Share this showdown"
+        label={
+          fresh
+            ? "Markets opened — share this week's print"
+            : "Share this showdown"
+        }
+        emphasize={fresh}
       />
     </section>
   );
