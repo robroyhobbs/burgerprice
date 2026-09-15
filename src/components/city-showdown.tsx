@@ -62,7 +62,7 @@ export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
   });
 
   return (
-    <section className="max-w-7xl mx-auto px-6 pt-14 pb-6">
+    <section id="city-showdown" className="max-w-7xl mx-auto px-6 pt-14 pb-6 scroll-mt-20">
       {/* Section header */}
       <div className="text-center mb-12">
         <p className="text-xs uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500 mb-3 font-medium inline-flex items-center justify-center gap-2 flex-wrap">

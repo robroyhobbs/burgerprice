@@ -6,6 +6,7 @@ import {
 } from "@/lib/data";
 import { Header } from "@/components/header";
 import { NationalBpi } from "@/components/national-bpi";
+import { BpiExplainer } from "@/components/bpi-explainer";
 import { CityShowdown } from "@/components/city-showdown";
 import { Leaderboard } from "@/components/leaderboard";
 import { CandlestickChart } from "@/components/candlestick-chart";
@@ -99,6 +100,21 @@ export default async function Home({ searchParams }: HomeProps) {
   const mostExpensiveCity =
     rankedByBpi.length > 0 ? rankedByBpi[rankedByBpi.length - 1].name : null;
 
+  const nationalCurrent =
+    nationalHistory.length > 0
+      ? nationalHistory[nationalHistory.length - 1]
+      : null;
+  const nationalPrevious =
+    nationalHistory.length >= 2
+      ? nationalHistory[nationalHistory.length - 2]
+      : null;
+  const nationalChangePct =
+    nationalCurrent && nationalPrevious && nationalPrevious.avg_bpi > 0
+      ? ((nationalCurrent.avg_bpi - nationalPrevious.avg_bpi) /
+          nationalPrevious.avg_bpi) *
+        100
+      : null;
+
   // Pick 2 showdown cities based on current week (deterministic rotation)
   const [idx1, idx2] = getShowdownIndices(data.weekOf, data.cities.length);
   const showdownCities = [data.cities[idx1], data.cities[idx2]].filter(Boolean);
@@ -113,6 +129,13 @@ export default async function Home({ searchParams }: HomeProps) {
       <main className="space-y-6 md:space-y-10">
         <NationalBpi
           history={nationalHistory}
+          cheapestCity={cheapestCity}
+          mostExpensiveCity={mostExpensiveCity}
+        />
+        <BpiExplainer
+          avgBpi={nationalCurrent?.avg_bpi ?? null}
+          changePct={nationalChangePct}
+          cityCount={nationalCurrent?.city_count ?? data.cities.length}
           cheapestCity={cheapestCity}
           mostExpensiveCity={mostExpensiveCity}
         />
