@@ -101,6 +101,9 @@ export function CityProfile({
           slug: city.slug,
           bpi,
           changePct: change,
+          rank,
+          totalCities,
+          nationalAvg,
         })}
         label="Share this city"
       />

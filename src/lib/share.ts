@@ -67,6 +67,12 @@ export function buildCityCaption(opts: {
   slug: string;
   bpi: number | null;
   changePct: number | null;
+  /** 1-based rank among tracked cities (highest BPI = #1). */
+  rank?: number | null;
+  /** Total cities in the ranking universe. */
+  totalCities?: number | null;
+  /** National average BPI for comparison. */
+  nationalAvg?: number | null;
 }): string {
   const bpiText =
     opts.bpi == null ? "collecting data" : `$${opts.bpi.toFixed(2)}`;
@@ -74,7 +80,21 @@ export function buildCityCaption(opts: {
     opts.changePct == null || Number.isNaN(opts.changePct)
       ? ""
       : ` (${opts.changePct > 0 ? "+" : ""}${opts.changePct.toFixed(1)}% WoW)`;
-  return `${opts.name}, ${opts.state} BPI: ${bpiText}${changeText}. Bloomberg Terminal energy, Wendy's drive-thru prices — ${cityShareUrl(opts.slug)}`;
+
+  const parts: string[] = [];
+  if (opts.rank != null && opts.rank > 0) {
+    const of =
+      opts.totalCities != null && opts.totalCities > 0
+        ? ` of ${opts.totalCities}`
+        : "";
+    parts.push(`ranks #${opts.rank}${of}`);
+  }
+  if (opts.nationalAvg != null && !Number.isNaN(opts.nationalAvg)) {
+    parts.push(`national prints $${opts.nationalAvg.toFixed(2)}`);
+  }
+  const context = parts.length > 0 ? ` — ${parts.join("; ")}.` : ".";
+
+  return `${opts.name}, ${opts.state} BPI: ${bpiText}${changeText}${context} Bloomberg Terminal energy, Wendy's drive-thru prices — ${cityShareUrl(opts.slug)}`;
 }
 
 export function nationalShareUrl(): string {
