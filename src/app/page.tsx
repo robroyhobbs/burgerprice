@@ -32,7 +32,14 @@ export async function generateMetadata({
 }: HomeProps): Promise<Metadata> {
   const sp = await searchParams;
   const raw = sp.showdown;
-  if (raw == null || raw === "") return {};
+  // Always declare apex homepage as canonical (fixes GSC duplicate www/apex).
+  const canonical = "/";
+  if (raw == null || raw === "") {
+    return {
+      alternates: { canonical },
+      openGraph: { url: canonical },
+    };
+  }
 
   const pair = parseShowdownPair(raw, null, null);
   const ogImage = pair
@@ -46,9 +53,11 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: { canonical },
     openGraph: {
       title,
       description,
+      url: canonical,
       images: [
         {
           url: ogImage,
