@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCityBySlug, getAllCities, getAllCitySlugs } from "@/lib/data";
 import { buildCityPageJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
-import { CityProfile } from "@/components/city-profile";
+import { CityProfile, type PeerCity } from "@/components/city-profile";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import type { Metadata } from "next";
@@ -79,6 +79,7 @@ export default async function CityPage({ params }: CityPageProps) {
   const allCities = await getAllCities();
   const nationalAvg = calculateNationalAverage(allCities);
   const rank = calculateRank(allCities, cityData.city.slug);
+  const peerCities = findPeerCities(allCities, cityData.city.slug, 2);
   const jsonLd = buildCityPageJsonLd(cityData);
 
   return (
@@ -89,11 +90,47 @@ export default async function CityPage({ params }: CityPageProps) {
       />
       <Header cities={[cityData]} />
       <main>
-        <CityProfile data={cityData} nationalAvg={nationalAvg} rank={rank} totalCities={allCities.length} />
+        <CityProfile
+          data={cityData}
+          nationalAvg={nationalAvg}
+          rank={rank}
+          totalCities={allCities.length}
+          peerCities={peerCities}
+        />
       </main>
       <Footer />
     </div>
   );
+}
+
+
+function findPeerCities(
+  cities: Awaited<ReturnType<typeof getAllCities>>,
+  slug: string,
+  limit = 2,
+): PeerCity[] {
+  const currentBpi = cities.find((c) => c.city.slug === slug)?.currentSnapshot
+    ?.bpi_score;
+  if (currentBpi == null) return [];
+
+  return cities
+    .filter(
+      (c) =>
+        c.city.slug !== slug &&
+        c.currentSnapshot?.bpi_score != null,
+    )
+    .sort(
+      (a, b) =>
+        Math.abs((a.currentSnapshot?.bpi_score ?? 0) - currentBpi) -
+        Math.abs((b.currentSnapshot?.bpi_score ?? 0) - currentBpi),
+    )
+    .slice(0, limit)
+    .map((c) => ({
+      name: c.city.name,
+      state: c.city.state,
+      slug: c.city.slug,
+      bpi: c.currentSnapshot!.bpi_score,
+    }));
 }
 
 function calculateNationalAverage(cities: Awaited<ReturnType<typeof getAllCities>>): number | null {
