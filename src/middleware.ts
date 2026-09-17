@@ -21,6 +21,7 @@ export function middleware(request: NextRequest) {
     "/": "https://burgerprice.com/",
     "/about": "https://burgerprice.com/about",
     "/cities": "https://burgerprice.com/cities",
+    "/rankings": "https://burgerprice.com/rankings",
   };
   const canonicalHref = linkCanonical[pathname];
   if (canonicalHref) {

@@ -62,6 +62,12 @@ export function Header({ cities }: HeaderProps) {
           <div className="flex items-center gap-4">
             <nav className="hidden sm:flex items-center gap-4">
               <Link
+                href="/rankings"
+                className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-ketchup dark:hover:text-mustard transition-colors"
+              >
+                Rankings
+              </Link>
+              <Link
                 href="/cities"
                 className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-ketchup dark:hover:text-mustard transition-colors"
               >

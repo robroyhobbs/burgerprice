@@ -42,6 +42,11 @@ export function CitiesIndex({ cities }: CitiesIndexProps) {
         </h1>
         <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto mb-6">
           Compare burger prices across {cities.length} US cities. Click any city for a full price breakdown.
+          Prefer the table?{" "}
+          <Link href="/rankings" className="text-ketchup dark:text-mustard hover:underline">
+            See weekly rankings
+          </Link>
+          .
         </p>
         <NearMeButton
           cities={cities.map((c) => c.city)}
