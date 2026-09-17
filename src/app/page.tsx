@@ -36,9 +36,26 @@ export async function generateMetadata({
   // Always declare apex homepage as canonical (fixes GSC duplicate www/apex).
   const canonical = "/";
   if (raw == null || raw === "") {
+    // Explicit images required: a bare openGraph override drops layout images,
+    // which left the live homepage without og:image (hurts FB/iMessage/LinkedIn shares).
+    const ogImage = "/api/og";
     return {
       alternates: { canonical },
-      openGraph: { url: canonical },
+      openGraph: {
+        url: canonical,
+        images: [
+          {
+            url: ogImage,
+            width: 1200,
+            height: 630,
+            alt: "Burger Price Index — national BPI share card",
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        images: [ogImage],
+      },
     };
   }
 
