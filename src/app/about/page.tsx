@@ -15,11 +15,20 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
     url: canonical,
+    images: [
+      {
+        url: "/api/og",
+        width: 1200,
+        height: 630,
+        alt: "Burger Price Index — national BPI share card",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
+    images: ["/api/og"],
   },
 };
 
