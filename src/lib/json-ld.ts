@@ -9,6 +9,7 @@ export function getSiteBaseUrl(): string {
 /**
  * Build Schema.org JSON-LD for a city BPI profile page.
  * WebPage + about Place/City + mainEntity Dataset (factual fields only).
+ * Dataset includes license (CC BY 4.0) for GSC / Schema.org Dataset guidance.
  */
 export function buildCityPageJsonLd(data: CityDashboardData): Record<string, unknown> {
   const base = getSiteBaseUrl();
@@ -51,6 +52,8 @@ export function buildCityPageJsonLd(data: CityDashboardData): Record<string, unk
     name: `Burger Price Index — ${city.name}, ${city.state}`,
     description,
     url,
+    license: "https://creativecommons.org/licenses/by/4.0/",
+    isAccessibleForFree: true,
     creator: {
       "@type": "Organization",
       name: "Burger Price Index",
