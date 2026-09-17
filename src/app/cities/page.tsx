@@ -43,7 +43,7 @@ export default async function CitiesPage() {
 
   return (
     <div className="min-h-screen bg-paper dark:bg-grill">
-      <Header cities={cities.slice(0, 2)} />
+      <Header cities={cities} />
       <main>
         <CitiesIndex cities={cities} />
       </main>

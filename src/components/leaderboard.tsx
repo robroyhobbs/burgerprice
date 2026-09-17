@@ -3,9 +3,14 @@ import Link from "next/link";
 
 interface LeaderboardProps {
   cities: CityDashboardData[];
+  /** When true (default on homepage), show a link to the full /rankings page. */
+  showFullPageLink?: boolean;
 }
 
-export function Leaderboard({ cities }: LeaderboardProps) {
+export function Leaderboard({
+  cities,
+  showFullPageLink = true,
+}: LeaderboardProps) {
   // Sort cities by BPI score descending, cities without data go last
   const ranked = [...cities]
     .map((c) => ({
@@ -22,18 +27,28 @@ export function Leaderboard({ cities }: LeaderboardProps) {
 
   return (
     <section className="max-w-7xl mx-auto px-6 py-10">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-ketchup/10 dark:bg-mustard/10 flex items-center justify-center text-lg">
-          🏆
+      <div className="flex items-center justify-between gap-3 mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-ketchup/10 dark:bg-mustard/10 flex items-center justify-center text-lg">
+            🏆
+          </div>
+          <div>
+            <h2 className="font-headline text-2xl text-ketchup dark:text-mustard leading-none">
+              National BPI Rankings
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">
+              {ranked.length} cities tracked &middot; Updated weekly
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-headline text-2xl text-ketchup dark:text-mustard leading-none">
-            National BPI Rankings
-          </h2>
-          <p className="text-xs text-gray-400 mt-1">
-            {ranked.length} cities tracked &middot; Updated weekly
-          </p>
-        </div>
+        {showFullPageLink && (
+          <Link
+            href="/rankings"
+            className="text-sm font-medium text-ketchup dark:text-mustard hover:underline whitespace-nowrap"
+          >
+            Full rankings →
+          </Link>
+        )}
       </div>
 
       <div className="bg-white dark:bg-grill-light rounded-3xl border border-gray-200 dark:border-grill-lighter overflow-hidden">

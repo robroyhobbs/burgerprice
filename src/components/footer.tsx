@@ -26,6 +26,9 @@ export function Footer() {
               Index
             </h3>
             <nav className="flex flex-col gap-3 text-sm text-gray-500 dark:text-gray-400">
+              <Link href="/rankings" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
+                Weekly Rankings
+              </Link>
               <Link href="/cities" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
                 All Cities
               </Link>

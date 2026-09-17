@@ -88,7 +88,7 @@ export default async function CityPage({ params }: CityPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Header cities={[cityData]} />
+      <Header cities={allCities} />
       <main>
         <CityProfile
           data={cityData}
