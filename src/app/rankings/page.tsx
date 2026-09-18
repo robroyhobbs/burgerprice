@@ -5,6 +5,12 @@ import { getSiteBaseUrl } from "@/lib/json-ld";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Leaderboard } from "@/components/leaderboard";
+import { ShareStrip } from "@/components/share-strip";
+import {
+  buildRankingsCaption,
+  rankingsOgPath,
+  rankingsShareUrl,
+} from "@/lib/share";
 import type { CityDashboardData } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +31,10 @@ export const metadata: Metadata = {
     url: canonical,
     images: [
       {
-        url: "/api/og",
+        url: rankingsOgPath(),
         width: 1200,
         height: 630,
-        alt: "Burger Price Index — national BPI share card",
+        alt: "Burger Price Index — weekly city rankings share card",
       },
     ],
   },
@@ -36,7 +42,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/api/og"],
+    images: [rankingsOgPath()],
   },
 };
 
@@ -290,6 +296,25 @@ export default async function RankingsPage() {
             </div>
           </div>
         </section>
+
+        {nationalCurrent && weekOf && (
+          <section className="max-w-7xl mx-auto px-6 pb-2">
+            <ShareStrip
+              shareUrl={rankingsShareUrl()}
+              caption={buildRankingsCaption({
+                weekOf,
+                avgBpi: nationalCurrent.avg_bpi,
+                changePct: nationalChange,
+                cityCount: nationalCurrent.city_count,
+                topCity: highest ? highest.city.name : null,
+                topBpi: highest?.bpi ?? null,
+                valueCity: lowest ? lowest.city.name : null,
+                valueBpi: lowest?.bpi ?? null,
+              })}
+              label="Share the leaderboard"
+            />
+          </section>
+        )}
 
         {/* Movers */}
         {(risers.length > 0 || fallers.length > 0) && (

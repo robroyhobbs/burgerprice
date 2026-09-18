@@ -439,6 +439,145 @@ function ShowdownCard(props: {
 }
 
 
+function RankingsCard(props: {
+  weekOf: string;
+  avgBpi: number;
+  changePct: number | null;
+  cityCount: number;
+  rows: { rank: number; label: string; bpi: number; changePct: number | null }[];
+  highLabel: string;
+  highBpi: number;
+  lowLabel: string;
+  lowBpi: number;
+}) {
+  const change = changeParts(props.changePct);
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#1A1A2E",
+        color: "white",
+        padding: "40px 56px",
+      }}
+    >
+      <BrandHeader />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 20,
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div
+            style={{
+              display: "flex",
+              fontSize: 18,
+              color: "#DAA520",
+              textTransform: "uppercase",
+              letterSpacing: "0.18em",
+              marginBottom: 8,
+            }}
+          >
+            Weekly City Rankings
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+            <span style={{ fontSize: 56, fontWeight: "bold", display: "flex" }}>
+              ${props.avgBpi.toFixed(2)}
+            </span>
+            <span style={{ fontSize: 22, color: change.color, display: "flex" }}>
+              {change.arrow} {change.text}
+            </span>
+          </div>
+          <div style={{ display: "flex", fontSize: 16, color: "#9CA3AF", marginTop: 4 }}>
+            National BPI · {props.cityCount} cities · week of {formatWeek(props.weekOf)}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+          <div style={{ display: "flex", fontSize: 14, color: "#9CA3AF" }}>
+            High {props.highLabel} ${props.highBpi.toFixed(2)}
+          </div>
+          <div style={{ display: "flex", fontSize: 14, color: "#9CA3AF" }}>
+            Low {props.lowLabel} ${props.lowBpi.toFixed(2)}
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          gap: 10,
+          justifyContent: "center",
+        }}
+      >
+        {props.rows.map((row) => {
+          const rowChange = changeParts(row.changePct);
+          return (
+            <div
+              key={row.rank}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 16px",
+                borderRadius: 12,
+                backgroundColor: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(218,165,32,0.15)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <span
+                  style={{
+                    display: "flex",
+                    fontSize: 22,
+                    fontWeight: "bold",
+                    color: "#DAA520",
+                    width: 36,
+                  }}
+                >
+                  #{row.rank}
+                </span>
+                <span style={{ display: "flex", fontSize: 26, fontWeight: 600 }}>
+                  {row.label}
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <span style={{ display: "flex", fontSize: 28, fontWeight: "bold" }}>
+                  ${row.bpi.toFixed(2)}
+                </span>
+                <span style={{ display: "flex", fontSize: 18, color: rowChange.color, width: 90 }}>
+                  {rowChange.arrow} {rowChange.text}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 16,
+        }}
+      >
+        <span style={{ display: "flex", fontSize: 16, color: "#6B7280" }}>
+          Full board on the tape
+        </span>
+        <span style={{ display: "flex", fontSize: 16, color: "#DAA520" }}>
+          burgerprice.com/rankings
+        </span>
+      </div>
+    </div>
+  );
+}
+
+
 function NewsletterCard(props: {
   headline: string;
   weekOf?: string;
@@ -518,6 +657,7 @@ export async function GET(request: NextRequest) {
   const leftSlugParam = searchParams.get("left");
   const rightSlugParam = searchParams.get("right");
   const newsletterParam = searchParams.get("newsletter");
+  const rankingsParam = searchParams.get("rankings");
   const weekParam = searchParams.get("week");
   const showdownMode = isShowdownRequest({
     showdown: showdownParam,
@@ -560,6 +700,61 @@ export async function GET(request: NextRequest) {
         <NewsletterCard headline={headline} weekOf={weekOf} />,
         { width: 1200, height: 630 },
       );
+    }
+
+
+    // Rankings leaderboard card — before showdown/city/national
+    if (rankingsParam === "1" || rankingsParam === "true") {
+      const data = await getDashboardData();
+      const history = getNationalBpiHistory(data.cities);
+      const latest = history[history.length - 1];
+      const previous = history.length >= 2 ? history[history.length - 2] : null;
+      const ranked = [...data.cities]
+        .map((c) => ({
+          label: `${c.city.name}, ${c.city.state}`,
+          shortLabel: c.city.name,
+          bpi: c.currentSnapshot?.bpi_score ?? null,
+          changePct: c.currentSnapshot?.change_pct ?? null,
+        }))
+        .filter((c): c is { label: string; shortLabel: string; bpi: number; changePct: number | null } => c.bpi != null)
+        .sort((a, b) => b.bpi - a.bpi);
+
+      if (latest && ranked.length > 0) {
+        const changePct =
+          previous && previous.avg_bpi !== 0
+            ? Math.round(
+                ((latest.avg_bpi - previous.avg_bpi) / previous.avg_bpi) * 1000,
+              ) / 10
+            : null;
+        const top = ranked.slice(0, 3).map((c, i) => ({
+          rank: i + 1,
+          label: c.shortLabel,
+          bpi: c.bpi,
+          changePct: c.changePct,
+        }));
+        const high = ranked[0];
+        const low = ranked[ranked.length - 1];
+        try {
+          return new ImageResponse(
+            (
+              <RankingsCard
+                weekOf={latest.week_of}
+                avgBpi={latest.avg_bpi}
+                changePct={changePct}
+                cityCount={latest.city_count}
+                rows={top}
+                highLabel={high.shortLabel}
+                highBpi={high.bpi}
+                lowLabel={low.shortLabel}
+                lowBpi={low.bpi}
+              />
+            ),
+            { width: 1200, height: 630 },
+          );
+        } catch {
+          // Rankings Satori failure — fall through.
+        }
+      }
     }
 
     // Explicit city pair / weekly showdown before single-city card
