@@ -158,3 +158,50 @@ export function buildNewsletterCaption(opts: {
   const week = formatWeekShort(opts.weekOf);
   return `BPI Weekly — week of ${week}: "${opts.headline}" The tape doesn't care about your feelings. Read the print: ${newsletterShareUrl(opts.weekOf)}`;
 }
+
+export function rankingsShareUrl(): string {
+  return `${getShareBaseUrl()}/rankings`;
+}
+
+export function rankingsOgPath(): string {
+  return "/api/og?rankings=1";
+}
+
+export function buildRankingsCaption(opts: {
+  weekOf: string;
+  avgBpi: number;
+  changePct?: number | null;
+  cityCount?: number;
+  /** Highest-BPI city (premium / #1). */
+  topCity?: string | null;
+  topBpi?: number | null;
+  /** Lowest-BPI city (value trade). */
+  valueCity?: string | null;
+  valueBpi?: number | null;
+}): string {
+  const week = formatWeekShort(opts.weekOf);
+  const changeText =
+    opts.changePct == null || Number.isNaN(opts.changePct)
+      ? ""
+      : ` (${opts.changePct > 0 ? "+" : ""}${opts.changePct.toFixed(1)}% WoW)`;
+
+  const bits: string[] = [];
+  if (opts.topCity && opts.topBpi != null) {
+    bits.push(`#1 ${opts.topCity} $${opts.topBpi.toFixed(2)}`);
+  }
+  if (opts.valueCity) {
+    bits.push(
+      opts.valueBpi != null
+        ? `${opts.valueCity} is the value trade at $${opts.valueBpi.toFixed(2)}`
+        : `${opts.valueCity} is the value trade`,
+    );
+  }
+  const board = bits.length > 0 ? ` ${bits.join("; ")}.` : "";
+  const coverage =
+    opts.cityCount && opts.cityCount > 0
+      ? ` ${opts.cityCount} cities on the tape.`
+      : "";
+
+  return `BPI Rankings — week of ${week}. National $${opts.avgBpi.toFixed(2)}${changeText}.${board}${coverage} Full board: ${rankingsShareUrl()}`;
+}
+
