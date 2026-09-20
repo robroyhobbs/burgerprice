@@ -578,6 +578,181 @@ function RankingsCard(props: {
 }
 
 
+
+function CitiesCard(props: {
+  weekOf: string;
+  avgBpi: number;
+  changePct: number | null;
+  cityCount: number;
+  valueLabel: string;
+  valueBpi: number;
+  premiumLabel: string;
+  premiumBpi: number;
+}) {
+  const change = changeParts(props.changePct);
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#1A1A2E",
+        color: "white",
+        padding: "48px 64px",
+      }}
+    >
+      <BrandHeader />
+      <div
+        style={{
+          display: "flex",
+          fontSize: 18,
+          color: "#DAA520",
+          textTransform: "uppercase",
+          letterSpacing: "0.18em",
+          marginBottom: 12,
+        }}
+      >
+        All Cities
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            fontSize: 20,
+            color: "#9CA3AF",
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            marginBottom: 8,
+          }}
+        >
+          National BPI
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
+          <span style={{ fontSize: 96, fontWeight: "bold", display: "flex" }}>
+            ${props.avgBpi.toFixed(2)}
+          </span>
+          <span style={{ fontSize: 28, color: change.color, display: "flex" }}>
+            {change.arrow} {change.text}
+          </span>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 18,
+            color: "#9CA3AF",
+            marginTop: 8,
+            marginBottom: 32,
+          }}
+        >
+          {props.cityCount} cities · week of {formatWeek(props.weekOf)}
+        </div>
+        <div style={{ display: "flex", gap: 32 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              flex: 1,
+              padding: "20px 24px",
+              borderRadius: 16,
+              backgroundColor: "rgba(34,139,34,0.12)",
+              border: "1px solid rgba(34,139,34,0.35)",
+            }}
+          >
+            <span
+              style={{
+                display: "flex",
+                fontSize: 14,
+                color: "#9CA3AF",
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                marginBottom: 8,
+              }}
+            >
+              Value trade
+            </span>
+            <span style={{ display: "flex", fontSize: 28, fontWeight: 600 }}>
+              {props.valueLabel}
+            </span>
+            <span
+              style={{
+                display: "flex",
+                fontSize: 36,
+                fontWeight: "bold",
+                color: "#228B22",
+                marginTop: 4,
+              }}
+            >
+              ${props.valueBpi.toFixed(2)}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              flex: 1,
+              padding: "20px 24px",
+              borderRadius: 16,
+              backgroundColor: "rgba(220,20,60,0.10)",
+              border: "1px solid rgba(220,20,60,0.35)",
+            }}
+          >
+            <span
+              style={{
+                display: "flex",
+                fontSize: 14,
+                color: "#9CA3AF",
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                marginBottom: 8,
+              }}
+            >
+              Premium print
+            </span>
+            <span style={{ display: "flex", fontSize: 28, fontWeight: 600 }}>
+              {props.premiumLabel}
+            </span>
+            <span
+              style={{
+                display: "flex",
+                fontSize: 36,
+                fontWeight: "bold",
+                color: "#DC143C",
+                marginTop: 4,
+              }}
+            >
+              ${props.premiumBpi.toFixed(2)}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 24,
+        }}
+      >
+        <span style={{ display: "flex", fontSize: 16, color: "#6B7280" }}>
+          Grid view on the tape
+        </span>
+        <span style={{ display: "flex", fontSize: 16, color: "#DAA520" }}>
+          burgerprice.com/cities
+        </span>
+      </div>
+    </div>
+  );
+}
+
+
 function NewsletterCard(props: {
   headline: string;
   weekOf?: string;
@@ -658,6 +833,7 @@ export async function GET(request: NextRequest) {
   const rightSlugParam = searchParams.get("right");
   const newsletterParam = searchParams.get("newsletter");
   const rankingsParam = searchParams.get("rankings");
+  const citiesParam = searchParams.get("cities");
   const weekParam = searchParams.get("week");
   const showdownMode = isShowdownRequest({
     showdown: showdownParam,
@@ -702,6 +878,53 @@ export async function GET(request: NextRequest) {
       );
     }
 
+
+    // All Cities grid card — before showdown/city/national
+    if (citiesParam === "1" || citiesParam === "true") {
+      const data = await getDashboardData();
+      const history = getNationalBpiHistory(data.cities);
+      const latest = history[history.length - 1];
+      const previous = history.length >= 2 ? history[history.length - 2] : null;
+      const ranked = [...data.cities]
+        .map((c) => ({
+          shortLabel: c.city.name,
+          bpi: c.currentSnapshot?.bpi_score ?? null,
+        }))
+        .filter(
+          (c): c is { shortLabel: string; bpi: number } => c.bpi != null,
+        )
+        .sort((a, b) => b.bpi - a.bpi);
+
+      if (latest && ranked.length > 0) {
+        const changePct =
+          previous && previous.avg_bpi !== 0
+            ? Math.round(
+                ((latest.avg_bpi - previous.avg_bpi) / previous.avg_bpi) * 1000,
+              ) / 10
+            : null;
+        const premium = ranked[0];
+        const value = ranked[ranked.length - 1];
+        try {
+          return new ImageResponse(
+            (
+              <CitiesCard
+                weekOf={latest.week_of}
+                avgBpi={latest.avg_bpi}
+                changePct={changePct}
+                cityCount={latest.city_count}
+                valueLabel={value.shortLabel}
+                valueBpi={value.bpi}
+                premiumLabel={premium.shortLabel}
+                premiumBpi={premium.bpi}
+              />
+            ),
+            { width: 1200, height: 630 },
+          );
+        } catch {
+          // Cities Satori failure — fall through.
+        }
+      }
+    }
 
     // Rankings leaderboard card — before showdown/city/national
     if (rankingsParam === "1" || rankingsParam === "true") {
