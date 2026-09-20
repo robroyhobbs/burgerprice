@@ -205,3 +205,51 @@ export function buildRankingsCaption(opts: {
   return `BPI Rankings — week of ${week}. National $${opts.avgBpi.toFixed(2)}${changeText}.${board}${coverage} Full board: ${rankingsShareUrl()}`;
 }
 
+
+export function citiesShareUrl(): string {
+  return `${getShareBaseUrl()}/cities`;
+}
+
+export function citiesOgPath(): string {
+  return "/api/og?cities=1";
+}
+
+export function buildCitiesCaption(opts: {
+  weekOf: string;
+  avgBpi: number;
+  changePct?: number | null;
+  cityCount?: number;
+  /** Highest-BPI city (premium print). */
+  premiumCity?: string | null;
+  premiumBpi?: number | null;
+  /** Lowest-BPI city (value trade). */
+  valueCity?: string | null;
+  valueBpi?: number | null;
+}): string {
+  const week = formatWeekShort(opts.weekOf);
+  const changeText =
+    opts.changePct == null || Number.isNaN(opts.changePct)
+      ? ""
+      : ` (${opts.changePct > 0 ? "+" : ""}${opts.changePct.toFixed(1)}% WoW)`;
+
+  const bits: string[] = [];
+  if (opts.valueCity) {
+    bits.push(
+      opts.valueBpi != null
+        ? `${opts.valueCity} is the value trade at $${opts.valueBpi.toFixed(2)}`
+        : `${opts.valueCity} is the value trade`,
+    );
+  }
+  if (opts.premiumCity && opts.premiumBpi != null) {
+    bits.push(
+      `${opts.premiumCity} prints the premium at $${opts.premiumBpi.toFixed(2)}`,
+    );
+  }
+  const board = bits.length > 0 ? ` ${bits.join("; ")}.` : "";
+  const coverage =
+    opts.cityCount && opts.cityCount > 0
+      ? ` ${opts.cityCount} cities on the map.`
+      : "";
+
+  return `All Cities BPI — week of ${week}. National $${opts.avgBpi.toFixed(2)}${changeText}.${board}${coverage} Browse the grid: ${citiesShareUrl()}`;
+}
