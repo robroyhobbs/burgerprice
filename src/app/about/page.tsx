@@ -1,6 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { ShareStrip } from "@/components/share-strip";
 import { getSiteBaseUrl } from "@/lib/json-ld";
+import {
+  aboutOgPath,
+  aboutShareUrl,
+  buildAboutCaption,
+} from "@/lib/share";
 
 const TITLE = "About | Burger Price Index";
 const DESCRIPTION =
@@ -17,10 +23,10 @@ export const metadata: Metadata = {
     url: canonical,
     images: [
       {
-        url: "/api/og",
+        url: aboutOgPath(),
         width: 1200,
         height: 630,
-        alt: "Burger Price Index — national BPI share card",
+        alt: "Burger Price Index — how we print the BPI",
       },
     ],
   },
@@ -28,7 +34,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/api/og"],
+    images: [aboutOgPath()],
   },
 };
 
@@ -123,6 +129,14 @@ export default function AboutPage() {
         <h1 className="font-headline text-3xl md:text-4xl text-ketchup dark:text-mustard mb-6">
           About the Burger Price Index
         </h1>
+
+        <div className="mb-8">
+          <ShareStrip
+            shareUrl={aboutShareUrl()}
+            caption={buildAboutCaption({ cityCount: 10 })}
+            label="Share the methodology"
+          />
+        </div>
 
         <div className="prose prose-gray dark:prose-invert max-w-none space-y-6 text-sm md:text-base leading-relaxed text-gray-700 dark:text-gray-300">
           <h2 className="font-headline text-xl text-gray-900 dark:text-white">What is the BPI?</h2>

@@ -253,3 +253,21 @@ export function buildCitiesCaption(opts: {
 
   return `All Cities BPI — week of ${week}. National $${opts.avgBpi.toFixed(2)}${changeText}.${board}${coverage} Browse the grid: ${citiesShareUrl()}`;
 }
+
+export function aboutShareUrl(): string {
+  return `${getShareBaseUrl()}/about`;
+}
+
+export function aboutOgPath(): string {
+  return "/api/og?about=1";
+}
+
+export function buildAboutCaption(opts?: {
+  cityCount?: number;
+}): string {
+  const coverage =
+    opts?.cityCount && opts.cityCount > 0
+      ? ` ${opts.cityCount} US cities on the tape.`
+      : " 10 US cities on the tape.";
+  return `How we print the BPI — weighted Fast Food 20% / Casual 40% / Premium 40%.${coverage} Bloomberg Terminal rigor, Wendy's frostiness. Not financial advice. Read the methodology: ${aboutShareUrl()}`;
+}

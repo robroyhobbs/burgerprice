@@ -753,6 +753,128 @@ function CitiesCard(props: {
 }
 
 
+
+function AboutCard() {
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#1A1A2E",
+        color: "white",
+        padding: "48px 64px",
+      }}
+    >
+      <BrandHeader />
+      <div
+        style={{
+          display: "flex",
+          fontSize: 18,
+          color: "#DAA520",
+          textTransform: "uppercase",
+          letterSpacing: "0.18em",
+          marginBottom: 12,
+        }}
+      >
+        Methodology
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            fontSize: 52,
+            fontWeight: "bold",
+            lineHeight: 1.15,
+            letterSpacing: "-0.01em",
+            maxWidth: 980,
+            marginBottom: 28,
+          }}
+        >
+          How we print the BPI
+        </div>
+        <div style={{ display: "flex", gap: 20 }}>
+          {[
+            { label: "Fast Food", weight: "20%" },
+            { label: "Casual", weight: "40%" },
+            { label: "Premium", weight: "40%" },
+          ].map((seg) => (
+            <div
+              key={seg.label}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                flex: 1,
+                padding: "20px 24px",
+                borderRadius: 16,
+                backgroundColor: "rgba(218,165,32,0.10)",
+                border: "1px solid rgba(218,165,32,0.35)",
+              }}
+            >
+              <span
+                style={{
+                  display: "flex",
+                  fontSize: 14,
+                  color: "#9CA3AF",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  marginBottom: 8,
+                }}
+              >
+                {seg.label}
+              </span>
+              <span
+                style={{
+                  display: "flex",
+                  fontSize: 40,
+                  fontWeight: "bold",
+                  color: "#DAA520",
+                }}
+              >
+                {seg.weight}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 20,
+            color: "#9CA3AF",
+            marginTop: 28,
+          }}
+        >
+          10 US cities · weekly reprint · not financial advice
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 24,
+        }}
+      >
+        <span style={{ display: "flex", fontSize: 16, color: "#6B7280" }}>
+          Bloomberg Terminal energy, Wendy's frostiness
+        </span>
+        <span style={{ display: "flex", fontSize: 16, color: "#DAA520" }}>
+          burgerprice.com/about
+        </span>
+      </div>
+    </div>
+  );
+}
+
+
 function NewsletterCard(props: {
   headline: string;
   weekOf?: string;
@@ -834,6 +956,7 @@ export async function GET(request: NextRequest) {
   const newsletterParam = searchParams.get("newsletter");
   const rankingsParam = searchParams.get("rankings");
   const citiesParam = searchParams.get("cities");
+  const aboutParam = searchParams.get("about");
   const weekParam = searchParams.get("week");
   const showdownMode = isShowdownRequest({
     showdown: showdownParam,
@@ -843,6 +966,18 @@ export async function GET(request: NextRequest) {
   });
 
   try {
+    // About / methodology card — before showdown/city/national
+    if (aboutParam === "1" || aboutParam === "true") {
+      try {
+        return new ImageResponse(<AboutCard />, {
+          width: 1200,
+          height: 630,
+        });
+      } catch {
+        // About Satori failure — fall through.
+      }
+    }
+
     // Newsletter edition card — before showdown/city/national
     if (newsletterParam === "1" || newsletterParam === "true") {
       const fallbackHeadline =
