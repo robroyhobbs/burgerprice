@@ -1,6 +1,12 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCityBySlug, getAllCities, getAllCitySlugs } from "@/lib/data";
-import { buildCityPageJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
+import {
+  buildCityFaqItems,
+  buildCityPageJsonLd,
+  buildFaqPageJsonLd,
+  getSiteBaseUrl,
+} from "@/lib/json-ld";
 import { CityProfile, type PeerCity } from "@/components/city-profile";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
@@ -80,13 +86,37 @@ export default async function CityPage({ params }: CityPageProps) {
   const nationalAvg = calculateNationalAverage(allCities);
   const rank = calculateRank(allCities, cityData.city.slug);
   const peerCities = findPeerCities(allCities, cityData.city.slug, 2);
-  const jsonLd = buildCityPageJsonLd(cityData);
+  const webpageJsonLd = buildCityPageJsonLd(cityData);
+
+  const snap = cityData.currentSnapshot;
+  const faqItems = buildCityFaqItems({
+    name: cityData.city.name,
+    state: cityData.city.state,
+    slug: cityData.city.slug,
+    bpi: snap?.bpi_score ?? null,
+    changePct: snap?.change_pct ?? null,
+    weekOf: snap?.week_of ?? null,
+    rank,
+    totalCities: allCities.length,
+    nationalAvg,
+    cheapestRestaurant: snap?.cheapest_restaurant ?? null,
+    cheapestPrice: snap?.cheapest_price ?? null,
+    mostExpensiveRestaurant: snap?.most_expensive_restaurant ?? null,
+    mostExpensivePrice: snap?.most_expensive_price ?? null,
+    sampleSize: snap?.sample_size ?? null,
+    peerCities,
+  });
+  const faqJsonLd = buildFaqPageJsonLd(faqItems);
 
   return (
     <div className="min-h-screen bg-paper dark:bg-grill">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webpageJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <Header cities={allCities} />
       <main>
@@ -97,6 +127,55 @@ export default async function CityPage({ params }: CityPageProps) {
           totalCities={allCities.length}
           peerCities={peerCities}
         />
+
+        {/* FAQ — mirrors FAQPage JSON-LD */}
+        <section className="max-w-7xl mx-auto px-6 pb-14">
+          <h2 className="font-headline text-2xl text-ketchup dark:text-mustard mb-6">
+            {cityData.city.name} FAQ
+          </h2>
+          <div className="space-y-4">
+            {faqItems.map((item) => (
+              <details
+                key={item.q}
+                className="group bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter px-5 py-4"
+              >
+                <summary className="cursor-pointer list-none font-medium text-sm text-gray-900 dark:text-white flex items-center justify-between gap-4">
+                  {item.q}
+                  <span className="text-gray-300 dark:text-gray-600 group-open:rotate-45 transition-transform text-lg leading-none">
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  {item.a}
+                </p>
+              </details>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-6">
+            Compare markets on{" "}
+            <Link
+              href="/cities"
+              className="text-ketchup dark:text-mustard hover:underline"
+            >
+              All Cities
+            </Link>{" "}
+            or the{" "}
+            <Link
+              href="/rankings"
+              className="text-ketchup dark:text-mustard hover:underline"
+            >
+              weekly rankings
+            </Link>
+            . Methodology on{" "}
+            <Link
+              href="/about"
+              className="text-ketchup dark:text-mustard hover:underline"
+            >
+              About
+            </Link>
+            .
+          </p>
+        </section>
       </main>
       <Footer />
     </div>
