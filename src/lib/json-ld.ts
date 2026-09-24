@@ -205,6 +205,98 @@ export function buildCityFaqItems(ctx: CityFaqContext): FaqItem[] {
   return items;
 }
 
+
+export interface ShowdownFaqContext {
+  weekOf: string | null;
+  leftName: string;
+  leftState: string;
+  leftSlug: string;
+  leftBpi: number | null;
+  rightName: string;
+  rightState: string;
+  rightSlug: string;
+  rightBpi: number | null;
+  nationalAvg: number | null;
+  cityCount: number;
+  cheapestCity: string | null;
+  mostExpensiveCity: string | null;
+}
+
+/**
+ * Homepage showdown FAQ copy — on-page + FAQPage JSON-LD.
+ * Voice: Bloomberg-meets-Wendy's. Mirrors /cities and city-detail FAQ patterns.
+ */
+export function buildShowdownFaqItems(ctx: ShowdownFaqContext): FaqItem[] {
+  const items: FaqItem[] = [];
+  const leftLabel = `${ctx.leftName}, ${ctx.leftState}`;
+  const rightLabel = `${ctx.rightName}, ${ctx.rightState}`;
+  const weekBit = ctx.weekOf ? ` for the week of ${ctx.weekOf}` : "";
+
+  if (ctx.leftBpi != null && ctx.rightBpi != null) {
+    const gap = Math.abs(ctx.leftBpi - ctx.rightBpi);
+    let lead: string;
+    if (gap < 0.01) {
+      lead = `${ctx.leftName} and ${ctx.rightName} are locked at parity — markets hate a draw.`;
+    } else {
+      const leader = ctx.leftBpi > ctx.rightBpi ? ctx.leftName : ctx.rightName;
+      const underdog = ctx.leftBpi > ctx.rightBpi ? ctx.rightName : ctx.leftName;
+      lead = `${leader} leads by $${gap.toFixed(2)}. ${underdog} is the value trade this week.`;
+    }
+    items.push({
+      q: "What is this week's city showdown?",
+      a: `Head-to-head BPI${weekBit}: ${leftLabel} at $${ctx.leftBpi.toFixed(2)} vs ${rightLabel} at $${ctx.rightBpi.toFixed(2)}. ${lead}`,
+    });
+  } else {
+    items.push({
+      q: "What is this week's city showdown?",
+      a: `Two tracked cities face off on BPI each week${weekBit ? weekBit : ""}. Once both prints clear, this section shows the dollars, the gap, and who leads.`,
+    });
+  }
+
+  items.push({
+    q: "How do I read the showdown?",
+    a: "Higher BPI means a pricier burger tape that week — not a moral victory. The winner badge marks the higher print; the gap is just dollars between the two. Same weighting as every city page: Fast Food 20%, Casual/Diner 40%, Premium/Gourmet 40%. Not financial advice — just the tape.",
+  });
+
+  if (ctx.nationalAvg != null && ctx.leftBpi != null && ctx.rightBpi != null) {
+    const vsLeft =
+      Math.round(((ctx.leftBpi - ctx.nationalAvg) / ctx.nationalAvg) * 1000) / 10;
+    const vsRight =
+      Math.round(((ctx.rightBpi - ctx.nationalAvg) / ctx.nationalAvg) * 1000) / 10;
+    const fmt = (d: number, name: string) =>
+      d === 0
+        ? `${name} dead even with national`
+        : d > 0
+          ? `${name} ${d.toFixed(1)}% above national`
+          : `${name} ${Math.abs(d).toFixed(1)}% below national`;
+    items.push({
+      q: "How do these cities compare to the national print?",
+      a: `National average sits at $${ctx.nationalAvg.toFixed(2)} across ${ctx.cityCount} tracked cities. ${fmt(vsLeft, ctx.leftName)}; ${fmt(vsRight, ctx.rightName)}.`,
+    });
+  } else if (ctx.nationalAvg != null) {
+    items.push({
+      q: "How do these cities compare to the national print?",
+      a: `National average sits at $${ctx.nationalAvg.toFixed(2)} across ${ctx.cityCount} tracked cities. Open each city page for the full vs-national readout.`,
+    });
+  }
+
+  items.push({
+    q: "How are the matchup cities chosen?",
+    a: "Deterministic weekly rotation — same week_of always picks the same pair from the tracked city list. Share URLs can pin an explicit pair (?showdown=slug-a,slug-b) without changing the live rotation.",
+  });
+
+  const floorCeil =
+    ctx.cheapestCity && ctx.mostExpensiveCity
+      ? ` This week the national floor is ${ctx.cheapestCity}; the ceiling is ${ctx.mostExpensiveCity}.`
+      : "";
+  items.push({
+    q: "Where can I compare more cities?",
+    a: `Browse the full card grid on /cities, dig into either matchup city above, or hit /rankings for the weekly leaderboard.${floorCeil} Methodology and weighting live on /about.`,
+  });
+
+  return items;
+}
+
 export function buildFaqPageJsonLd(items: FaqItem[]): Record<string, unknown> {
   return {
     "@context": "https://schema.org",

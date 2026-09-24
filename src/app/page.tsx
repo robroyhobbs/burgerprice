@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   getDashboardData,
   getNationalBpiHistory,
@@ -19,6 +20,10 @@ import { FindYourCity } from "@/components/find-your-city";
 import { Footer } from "@/components/footer";
 import { getShowdownIndices, parseShowdownPair } from "@/lib/showdown";
 import { showdownOgPath } from "@/lib/share";
+import {
+  buildFaqPageJsonLd,
+  buildShowdownFaqItems,
+} from "@/lib/json-ld";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -140,8 +145,39 @@ export default async function Home({ searchParams }: HomeProps) {
   const trendCities =
     showdownCities.length >= 2 ? showdownCities : data.cities.slice(0, 2);
 
+  const showdownFaqItems =
+    showdownCities.length >= 2
+      ? buildShowdownFaqItems({
+          weekOf: data.weekOf ?? nationalCurrent?.week_of ?? null,
+          leftName: showdownCities[0].city.name,
+          leftState: showdownCities[0].city.state,
+          leftSlug: showdownCities[0].city.slug,
+          leftBpi: showdownCities[0].currentSnapshot?.bpi_score ?? null,
+          rightName: showdownCities[1].city.name,
+          rightState: showdownCities[1].city.state,
+          rightSlug: showdownCities[1].city.slug,
+          rightBpi: showdownCities[1].currentSnapshot?.bpi_score ?? null,
+          nationalAvg: nationalCurrent?.avg_bpi ?? null,
+          cityCount: nationalCurrent?.city_count ?? data.cities.length,
+          cheapestCity,
+          mostExpensiveCity,
+        })
+      : [];
+  const showdownFaqJsonLd =
+    showdownFaqItems.length > 0
+      ? buildFaqPageJsonLd(showdownFaqItems)
+      : null;
+
   return (
     <div className="min-h-screen bg-paper dark:bg-grill">
+      {showdownFaqJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(showdownFaqJsonLd),
+          }}
+        />
+      ) : null}
       <Header cities={data.cities} />
       <main className="space-y-6 md:space-y-10">
         <NationalBpi
@@ -157,6 +193,77 @@ export default async function Home({ searchParams }: HomeProps) {
           mostExpensiveCity={mostExpensiveCity}
         />
         <CityShowdown cities={showdownCities} weekOf={data.weekOf} />
+
+        {/* Showdown FAQ — mirrors FAQPage JSON-LD */}
+        {showdownFaqItems.length > 0 ? (
+          <section
+            className="max-w-7xl mx-auto px-6 pb-4"
+            aria-labelledby="showdown-faq"
+          >
+            <h2
+              id="showdown-faq"
+              className="font-headline text-2xl text-ketchup dark:text-mustard mb-6"
+            >
+              Showdown FAQ
+            </h2>
+            <div className="space-y-4">
+              {showdownFaqItems.map((item) => (
+                <details
+                  key={item.q}
+                  className="group bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter px-5 py-4"
+                >
+                  <summary className="cursor-pointer list-none font-medium text-sm text-gray-900 dark:text-white flex items-center justify-between gap-4">
+                    {item.q}
+                    <span className="text-gray-300 dark:text-gray-600 group-open:rotate-45 transition-transform text-lg leading-none">
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-6">
+              Dig into{" "}
+              {showdownCities.length >= 2 ? (
+                <>
+                  <Link
+                    href={`/cities/${showdownCities[0].city.slug}`}
+                    className="text-ketchup dark:text-mustard hover:underline"
+                  >
+                    {showdownCities[0].city.name}
+                  </Link>
+                  {" or "}
+                  <Link
+                    href={`/cities/${showdownCities[1].city.slug}`}
+                    className="text-ketchup dark:text-mustard hover:underline"
+                  >
+                    {showdownCities[1].city.name}
+                  </Link>
+                </>
+              ) : (
+                "either matchup city"
+              )}
+              , browse{" "}
+              <Link
+                href="/cities"
+                className="text-ketchup dark:text-mustard hover:underline"
+              >
+                All Cities
+              </Link>
+              , or see methodology on{" "}
+              <Link
+                href="/about"
+                className="text-ketchup dark:text-mustard hover:underline"
+              >
+                About
+              </Link>
+              .
+            </p>
+          </section>
+        ) : null}
+
         <Leaderboard cities={data.cities} />
         <CandlestickChart cities={trendCities} />
         <MarketReport report={data.latestReport} />
