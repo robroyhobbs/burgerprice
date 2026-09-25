@@ -22,6 +22,7 @@ import { getShowdownIndices, parseShowdownPair } from "@/lib/showdown";
 import { showdownOgPath } from "@/lib/share";
 import {
   buildFaqPageJsonLd,
+  buildHomePageJsonLd,
   buildShowdownFaqItems,
 } from "@/lib/json-ld";
 import type { Metadata } from "next";
@@ -168,8 +169,20 @@ export default async function Home({ searchParams }: HomeProps) {
       ? buildFaqPageJsonLd(showdownFaqItems)
       : null;
 
+  const homePageJsonLd = buildHomePageJsonLd({
+    weekOf: data.weekOf ?? nationalCurrent?.week_of ?? null,
+    nationalAvg: nationalCurrent?.avg_bpi ?? null,
+    cityCount: nationalCurrent?.city_count ?? data.cities.length,
+  });
+
   return (
     <div className="min-h-screen bg-paper dark:bg-grill">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(homePageJsonLd),
+        }}
+      />
       {showdownFaqJsonLd ? (
         <script
           type="application/ld+json"
