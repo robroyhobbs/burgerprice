@@ -297,6 +297,87 @@ export function buildShowdownFaqItems(ctx: ShowdownFaqContext): FaqItem[] {
   return items;
 }
 
+
+export interface HomePageJsonLdContext {
+  weekOf: string | null;
+  nationalAvg: number | null;
+  cityCount: number;
+}
+
+/** Layout metadata title — keep in sync with src/app/layout.tsx */
+const HOME_PAGE_NAME =
+  "Burger Price Index | The Financial Index for Burger Lovers";
+
+/** Layout metadata description — keep in sync with src/app/layout.tsx */
+const HOME_PAGE_DESCRIPTION =
+  "Track burger prices across US cities with the BPI. Weekly national index, city showdowns, market reports, and the Burger of the Week.";
+
+/**
+ * Homepage WebPage + optional national Dataset (mainEntity).
+ * Mirrors city-detail WebPage/Dataset pattern; FAQPage stays separate.
+ */
+export function buildHomePageJsonLd(
+  ctx: HomePageJsonLdContext,
+): Record<string, unknown> {
+  const base = getSiteBaseUrl();
+  const url = `${base}/`;
+
+  const webpage: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: HOME_PAGE_NAME,
+    description: HOME_PAGE_DESCRIPTION,
+    url,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "Burger Price Index",
+      url: base,
+    },
+  };
+
+  if (ctx.weekOf) {
+    webpage.dateModified = ctx.weekOf;
+  }
+
+  if (ctx.nationalAvg != null) {
+    const print = `$${ctx.nationalAvg.toFixed(2)}`;
+    const weekBit = ctx.weekOf ? ` for the week of ${ctx.weekOf}` : "";
+    const dataset: Record<string, unknown> = {
+      "@type": "Dataset",
+      name: "Burger Price Index — National",
+      description: `National Burger Price Index print of ${print}${weekBit} across ${ctx.cityCount} tracked US cities.`,
+      url,
+      license: "https://creativecommons.org/licenses/by/4.0/",
+      isAccessibleForFree: true,
+      creator: {
+        "@type": "Organization",
+        name: "Burger Price Index",
+        url: base,
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "Burger Price Index",
+        url: base,
+      },
+      variableMeasured: {
+        "@type": "PropertyValue",
+        name: "BPI score",
+        value: Number(ctx.nationalAvg.toFixed(2)),
+        unitText: "USD",
+      },
+    };
+
+    if (ctx.weekOf) {
+      dataset.dateModified = ctx.weekOf;
+      dataset.temporalCoverage = ctx.weekOf;
+    }
+
+    webpage.mainEntity = dataset;
+  }
+
+  return webpage;
+}
+
 export function buildFaqPageJsonLd(items: FaqItem[]): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
