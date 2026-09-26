@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCityBySlug, getAllCities, getAllCitySlugs } from "@/lib/data";
 import {
+  buildCityBreadcrumbJsonLd,
   buildCityFaqItems,
   buildCityPageJsonLd,
   buildFaqPageJsonLd,
@@ -87,6 +88,11 @@ export default async function CityPage({ params }: CityPageProps) {
   const rank = calculateRank(allCities, cityData.city.slug);
   const peerCities = findPeerCities(allCities, cityData.city.slug, 2);
   const webpageJsonLd = buildCityPageJsonLd(cityData);
+  const breadcrumbJsonLd = buildCityBreadcrumbJsonLd({
+    name: cityData.city.name,
+    state: cityData.city.state,
+    slug: cityData.city.slug,
+  });
 
   const snap = cityData.currentSnapshot;
   const faqItems = buildCityFaqItems({
@@ -117,6 +123,10 @@ export default async function CityPage({ params }: CityPageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <Header cities={allCities} />
       <main>
