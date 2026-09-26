@@ -102,6 +102,46 @@ export function buildCityPageJsonLd(data: CityDashboardData): Record<string, unk
   return webpage;
 }
 
+export interface CityBreadcrumbContext {
+  name: string;
+  state: string;
+  slug: string;
+}
+
+/**
+ * BreadcrumbList for /cities/[slug]: Home → Cities → City.
+ * Emitted as a separate ld+json script alongside WebPage + FAQPage.
+ */
+export function buildCityBreadcrumbJsonLd(
+  ctx: CityBreadcrumbContext,
+): Record<string, unknown> {
+  const base = getSiteBaseUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `${base}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Cities",
+        item: `${base}/cities`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: `${ctx.name}, ${ctx.state}`,
+        item: `${base}/cities/${ctx.slug}`,
+      },
+    ],
+  };
+}
+
 export interface FaqItem {
   q: string;
   a: string;
