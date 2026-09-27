@@ -418,6 +418,48 @@ export function buildHomePageJsonLd(
   return webpage;
 }
 
+
+/** Sitewide Organization — keep description aligned with layout metadata. */
+const ORGANIZATION_DESCRIPTION =
+  "Track burger prices across US cities with the BPI. Weekly national index, city showdowns, market reports, and the Burger of the Week.";
+
+/**
+ * Root Organization JSON-LD for every page (layout).
+ * No logo: public/ has no brand asset yet. Nested page Organization blobs stay unchanged.
+ */
+export function buildOrganizationJsonLd(): Record<string, unknown> {
+  const base = getSiteBaseUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${base}/#organization`,
+    name: "Burger Price Index",
+    alternateName: "burgerprice.com",
+    url: base,
+    description: ORGANIZATION_DESCRIPTION,
+  };
+}
+
+/**
+ * Root WebSite JSON-LD for every page (layout).
+ * publisher → Organization via @id. No SearchAction — no site search endpoint.
+ */
+export function buildWebSiteJsonLd(): Record<string, unknown> {
+  const base = getSiteBaseUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${base}/#website`,
+    name: "Burger Price Index",
+    url: base,
+    description: ORGANIZATION_DESCRIPTION,
+    inLanguage: "en-US",
+    publisher: {
+      "@id": `${base}/#organization`,
+    },
+  };
+}
+
 export function buildFaqPageJsonLd(items: FaqItem[]): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
