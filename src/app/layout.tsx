@@ -7,6 +7,10 @@ import {
 import "@/styles/globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
+import {
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+} from "@/lib/json-ld";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -66,6 +70,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const organizationJsonLd = buildOrganizationJsonLd();
+  const webSiteJsonLd = buildWebSiteJsonLd();
+
   return (
     <html
       lang="en"
@@ -73,6 +80,18 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(webSiteJsonLd),
+          }}
+        />
         <ThemeProvider>{children}</ThemeProvider>
         <Analytics />
       </body>
