@@ -102,6 +102,40 @@ export function buildCityPageJsonLd(data: CityDashboardData): Record<string, unk
   return webpage;
 }
 
+export interface BreadcrumbCrumb {
+  /** Visible crumb label */
+  name: string;
+  /** Path relative to site root, e.g. "/" or "/rankings" */
+  path: string;
+}
+
+/**
+ * Shared BreadcrumbList JSON-LD. Paths are joined to the site base URL.
+ * Home should use path "/" so the item URL is exactly `${base}/`.
+ */
+export function buildBreadcrumbJsonLd(
+  crumbs: BreadcrumbCrumb[],
+): Record<string, unknown> {
+  const base = getSiteBaseUrl();
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((crumb, i) => {
+      const path = crumb.path === "/" ? "/" : crumb.path.replace(/\/$/, "");
+      const item =
+        path === "/"
+          ? `${base}/`
+          : `${base}${path.startsWith("/") ? path : `/${path}`}`;
+      return {
+        "@type": "ListItem",
+        position: i + 1,
+        name: crumb.name,
+        item,
+      };
+    }),
+  };
+}
+
 export interface CityBreadcrumbContext {
   name: string;
   state: string;
@@ -115,31 +149,11 @@ export interface CityBreadcrumbContext {
 export function buildCityBreadcrumbJsonLd(
   ctx: CityBreadcrumbContext,
 ): Record<string, unknown> {
-  const base = getSiteBaseUrl();
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: `${base}/`,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Cities",
-        item: `${base}/cities`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: `${ctx.name}, ${ctx.state}`,
-        item: `${base}/cities/${ctx.slug}`,
-      },
-    ],
-  };
+  return buildBreadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Cities", path: "/cities" },
+    { name: `${ctx.name}, ${ctx.state}`, path: `/cities/${ctx.slug}` },
+  ]);
 }
 
 export interface FaqItem {

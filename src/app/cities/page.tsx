@@ -4,7 +4,7 @@ import { CitiesIndex } from "@/components/cities-index";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { ShareStrip } from "@/components/share-strip";
-import { getSiteBaseUrl } from "@/lib/json-ld";
+import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
 import {
   buildCitiesCaption,
   citiesOgPath,
@@ -139,7 +139,12 @@ function buildJsonLd(
   };
   if (weekOf) webpage.dateModified = weekOf;
 
-  return [webpage, itemList, faqPage];
+  const breadcrumb = buildBreadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Cities", path: "/cities" },
+  ]);
+
+  return [webpage, itemList, faqPage, breadcrumb];
 }
 
 export default async function CitiesPage() {
