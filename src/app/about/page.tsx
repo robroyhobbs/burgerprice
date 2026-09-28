@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ShareStrip } from "@/components/share-strip";
-import { getSiteBaseUrl } from "@/lib/json-ld";
+import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
 import {
   aboutOgPath,
   aboutShareUrl,
@@ -103,7 +103,12 @@ function buildAboutJsonLd(): Record<string, unknown>[] {
     })),
   };
 
-  return [webpage, faqPage];
+  const breadcrumb = buildBreadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+  ]);
+
+  return [webpage, faqPage, breadcrumb];
 }
 
 export default function AboutPage() {

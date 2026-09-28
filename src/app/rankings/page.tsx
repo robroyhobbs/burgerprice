@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getAllCities, getNationalBpiHistory } from "@/lib/data";
-import { getSiteBaseUrl } from "@/lib/json-ld";
+import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Leaderboard } from "@/components/leaderboard";
@@ -137,7 +137,12 @@ function buildJsonLd(
   };
   if (weekOf) webpage.dateModified = weekOf;
 
-  return [webpage, itemList, faqPage];
+  const breadcrumb = buildBreadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Rankings", path: "/rankings" },
+  ]);
+
+  return [webpage, itemList, faqPage, breadcrumb];
 }
 
 export default async function RankingsPage() {
