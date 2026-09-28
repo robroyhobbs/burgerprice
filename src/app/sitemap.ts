@@ -63,7 +63,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let newsletterRoutes: MetadataRoute.Sitemap = [];
   try {
-    const editions = await getAllNewsletters();
+    // Only the latest edition is indexable; archived issues are noindex
+    // (see app/newsletter/[week_of]/page.tsx), so keep them out of the sitemap.
+    // getAllNewsletters() is ordered by week_of DESC.
+    const editions = (await getAllNewsletters()).slice(0, 1);
     newsletterRoutes = editions.map((edition) => ({
       url: `${base}/newsletter/${edition.week_of}`,
       lastModified: now,
