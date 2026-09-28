@@ -1,4 +1,7 @@
-import { getNewsletterByWeek } from "@/lib/newsletter-data";
+import {
+  getLatestNewsletter,
+  getNewsletterByWeek,
+} from "@/lib/newsletter-data";
 import { NewsletterEdition } from "@/components/newsletter-edition";
 import { ShareStrip } from "@/components/share-strip";
 import {
@@ -27,10 +30,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const ogImage = newsletterOgPath(week_of);
   const canonical = `${getSiteBaseUrl()}/newsletter/${week_of}`;
 
+  // Only the latest edition is indexable. Archived issues are thin and eat
+  // crawl budget, so they render normally for readers but are noindex,follow.
+  // If the latest edition can't be determined, default to noindex.
+  const latest = await getLatestNewsletter();
+  const latestWeek = latest ? String(latest.week_of).slice(0, 10) : null;
+  const isLatest = latestWeek !== null && latestWeek === week_of;
+
   return {
     title,
     description,
     alternates: { canonical },
+    ...(isLatest ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
       title,
       description,
