@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Leaderboard } from "@/components/leaderboard";
 import { ShareStrip } from "@/components/share-strip";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   buildRankingsCaption,
   rankingsOgPath,
@@ -211,6 +212,13 @@ export default async function RankingsPage() {
       <main>
         {/* Hero + national print */}
         <section className="max-w-7xl mx-auto px-6 pt-10 pb-4">
+          <Breadcrumbs
+            className="mb-4"
+            crumbs={[
+              { name: "Home", path: "/" },
+              { name: "Rankings", path: "/rankings" },
+            ]}
+          />
           <p className="text-xs uppercase tracking-widest text-gray-400 font-medium mb-3">
             Weekly print
             {weekLabel ? ` · Week of ${weekLabel}` : ""}

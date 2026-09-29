@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ShareStrip } from "@/components/share-strip";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
 import {
   aboutOgPath,
@@ -124,12 +125,13 @@ export default function AboutPage() {
         />
       ))}
       <div className="max-w-3xl mx-auto px-4 py-12">
-        <Link
-          href="/"
-          className="text-sm text-ketchup dark:text-mustard hover:underline mb-8 inline-block"
-        >
-          &larr; Back to Dashboard
-        </Link>
+        <Breadcrumbs
+          className="mb-8"
+          crumbs={[
+            { name: "Home", path: "/" },
+            { name: "About", path: "/about" },
+          ]}
+        />
 
         <h1 className="font-headline text-3xl md:text-4xl text-ketchup dark:text-mustard mb-6">
           About the Burger Price Index
