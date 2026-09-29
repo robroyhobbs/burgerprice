@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAllCities, getNationalBpiHistory } from "@/lib/data";
 import { CitiesIndex } from "@/components/cities-index";
 import { Header } from "@/components/header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Footer } from "@/components/footer";
 import { ShareStrip } from "@/components/share-strip";
 import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
@@ -190,8 +191,16 @@ export default async function CitiesPage() {
       ))}
       <Header cities={cities} />
       <main>
+        <div className="max-w-7xl mx-auto px-6 pt-6 pb-0">
+          <Breadcrumbs
+            crumbs={[
+              { name: "Home", path: "/" },
+              { name: "Cities", path: "/cities" },
+            ]}
+          />
+        </div>
         {nationalCurrent && weekOf && (
-          <section className="max-w-7xl mx-auto px-6 pt-6 pb-0">
+          <section className="max-w-7xl mx-auto px-6 pt-4 pb-0">
             <ShareStrip
               shareUrl={citiesShareUrl()}
               caption={buildCitiesCaption({

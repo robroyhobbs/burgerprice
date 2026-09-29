@@ -14,6 +14,7 @@ import { CandlestickChart } from "./candlestick-chart";
 import { BurgerSpotlight } from "./burger-spotlight";
 import Link from "next/link";
 import { ShareStrip } from "./share-strip";
+import { Breadcrumbs } from "./breadcrumbs";
 import { buildCityCaption, cityShareUrl } from "@/lib/share";
 
 export interface PeerCity {
@@ -83,15 +84,15 @@ export function CityProfile({
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-14">
-      {/* Breadcrumb */}
-      <div className="mb-8">
-        <Link
-          href="/cities"
-          className="text-xs text-gray-400 hover:text-ketchup dark:hover:text-mustard transition-colors"
-        >
-          &larr; All Cities
-        </Link>
-      </div>
+      {/* Breadcrumb — mirrors BreadcrumbList JSON-LD */}
+      <Breadcrumbs
+        className="mb-8"
+        crumbs={[
+          { name: "Home", path: "/" },
+          { name: "Cities", path: "/cities" },
+          { name: `${city.name}, ${city.state}`, path: `/cities/${city.slug}` },
+        ]}
+      />
 
       {/* Hero */}
       <div className="mb-12">
