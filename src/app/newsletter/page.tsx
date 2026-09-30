@@ -3,13 +3,14 @@ import {
   getAllNewsletters,
 } from "@/lib/newsletter-data";
 import { NewsletterEdition } from "@/components/newsletter-edition";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
 import {
   buildNewsletterCaption,
   newsletterOgPath,
   newsletterShareUrl,
 } from "@/lib/share";
-import { getSiteBaseUrl } from "@/lib/json-ld";
+import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -18,6 +19,11 @@ export const revalidate = 3600;
 const TITLE = "BPI Weekly Newsletter | Burger Price Index";
 const DESCRIPTION =
   "The weekly Burger Price Index market report. Financial analysis of burger prices across 10 US cities, delivered with the gravitas of a Wall Street trading desk.";
+
+const NEWSLETTER_CRUMBS = [
+  { name: "Home", path: "/" },
+  { name: "Newsletter", path: "/newsletter" },
+];
 
 export async function generateMetadata(): Promise<Metadata> {
   const latest = await getLatestNewsletter();
@@ -63,10 +69,18 @@ export default async function NewsletterPage() {
     getAllNewsletters(),
   ]);
 
+  const crumbs = [...NEWSLETTER_CRUMBS];
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
+
   if (!latest) {
     return (
       <div className="min-h-screen bg-[#080810] py-20 px-6">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
         <div className="max-w-4xl mx-auto text-center">
+          <Breadcrumbs className="mb-8" crumbs={crumbs} />
           <div className="text-6xl mb-6">📰</div>
           <h1 className="font-headline text-3xl text-green-400 mb-4">
             BPI Weekly Newsletter
@@ -74,12 +88,6 @@ export default async function NewsletterPage() {
           <p className="text-gray-400 text-lg mb-8">
             Our analysts are preparing the inaugural edition. Check back soon.
           </p>
-          <Link
-            href="/"
-            className="text-sm text-green-500/60 hover:text-green-400 font-mono transition-colors"
-          >
-            &larr; Return to Dashboard
-          </Link>
         </div>
       </div>
     );
@@ -98,14 +106,13 @@ export default async function NewsletterPage() {
 
   return (
     <div className="min-h-screen bg-[#080810] py-10 px-6">
-      {/* Breadcrumb */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+
       <div className="max-w-4xl mx-auto mb-6">
-        <Link
-          href="/"
-          className="text-xs text-green-500/50 hover:text-green-400 font-mono transition-colors"
-        >
-          &larr; Dashboard
-        </Link>
+        <Breadcrumbs crumbs={crumbs} />
       </div>
 
       {/* Latest Edition */}

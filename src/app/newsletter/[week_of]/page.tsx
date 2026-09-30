@@ -3,14 +3,14 @@ import {
   getNewsletterByWeek,
 } from "@/lib/newsletter-data";
 import { NewsletterEdition } from "@/components/newsletter-edition";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
 import {
   buildNewsletterCaption,
   newsletterOgPath,
   newsletterShareUrl,
 } from "@/lib/share";
-import { getSiteBaseUrl } from "@/lib/json-ld";
-import Link from "next/link";
+import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -18,6 +18,15 @@ export const revalidate = 3600;
 
 interface PageProps {
   params: Promise<{ week_of: string }>;
+}
+
+function weekOfLabel(weekOf: string): string {
+  const formatted = new Date(weekOf + "T00:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  return `Week of ${formatted}`;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -78,23 +87,25 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
     headline: newsletter.headline,
   });
 
+  const crumbs = [
+    { name: "Home", path: "/" },
+    { name: "Newsletter", path: "/newsletter" },
+    {
+      name: weekOfLabel(String(newsletter.week_of).slice(0, 10)),
+      path: `/newsletter/${week_of}`,
+    },
+  ];
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
+
   return (
     <div className="min-h-screen bg-[#080810] py-10 px-6">
-      {/* Breadcrumb */}
-      <div className="max-w-4xl mx-auto mb-6 flex items-center gap-2">
-        <Link
-          href="/"
-          className="text-xs text-green-500/50 hover:text-green-400 font-mono transition-colors"
-        >
-          Dashboard
-        </Link>
-        <span className="text-green-500/30 text-xs">/</span>
-        <Link
-          href="/newsletter"
-          className="text-xs text-green-500/50 hover:text-green-400 font-mono transition-colors"
-        >
-          Newsletter
-        </Link>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+
+      <div className="max-w-4xl mx-auto mb-6">
+        <Breadcrumbs crumbs={crumbs} />
       </div>
 
       <NewsletterEdition
