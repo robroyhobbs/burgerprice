@@ -10,7 +10,13 @@ import {
   newsletterOgPath,
   newsletterShareUrl,
 } from "@/lib/share";
-import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
+import {
+  NEWSLETTER_FAQ_ITEMS,
+  buildBreadcrumbJsonLd,
+  buildFaqPageJsonLd,
+  buildWebPageJsonLd,
+  getSiteBaseUrl,
+} from "@/lib/json-ld";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -63,6 +69,35 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+function NewsletterFaq() {
+  return (
+    <section className="max-w-4xl mx-auto mt-12" aria-labelledby="newsletter-faq">
+      <h2
+        id="newsletter-faq"
+        className="text-[11px] text-green-500/60 font-mono font-bold uppercase tracking-[0.2em] mb-4"
+      >
+        Newsletter FAQ
+      </h2>
+      <div className="space-y-3">
+        {NEWSLETTER_FAQ_ITEMS.map((item) => (
+          <details
+            key={item.q}
+            className="group bg-[#0d0d1a] border border-[#1a3a1a] rounded-2xl px-5 py-4"
+          >
+            <summary className="cursor-pointer list-none font-medium text-sm text-gray-200 flex items-center justify-between gap-4">
+              {item.q}
+              <span className="text-green-500/30 group-open:rotate-45 transition-transform text-lg leading-none">
+                +
+              </span>
+            </summary>
+            <p className="mt-3 text-sm text-gray-400 leading-relaxed">{item.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default async function NewsletterPage() {
   const [latest, allEditions] = await Promise.all([
     getLatestNewsletter(),
@@ -71,14 +106,25 @@ export default async function NewsletterPage() {
 
   const crumbs = [...NEWSLETTER_CRUMBS];
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
+  const webpageJsonLd = buildWebPageJsonLd({
+    name: TITLE,
+    description: DESCRIPTION,
+    path: "/newsletter",
+    dateModified: latest?.week_of ?? null,
+  });
+  const faqJsonLd = buildFaqPageJsonLd(NEWSLETTER_FAQ_ITEMS);
+  const jsonLd = [webpageJsonLd, faqJsonLd, breadcrumbJsonLd];
 
   if (!latest) {
     return (
       <div className="min-h-screen bg-[#080810] py-20 px-6">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-        />
+        {jsonLd.map((block, i) => (
+          <script
+            key={i}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(block) }}
+          />
+        ))}
         <div className="max-w-4xl mx-auto text-center">
           <Breadcrumbs className="mb-8" crumbs={crumbs} />
           <div className="text-6xl mb-6">📰</div>
@@ -89,6 +135,7 @@ export default async function NewsletterPage() {
             Our analysts are preparing the inaugural edition. Check back soon.
           </p>
         </div>
+        <NewsletterFaq />
       </div>
     );
   }
@@ -106,10 +153,13 @@ export default async function NewsletterPage() {
 
   return (
     <div className="min-h-screen bg-[#080810] py-10 px-6">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
+      {jsonLd.map((block, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(block) }}
+        />
+      ))}
 
       <div className="max-w-4xl mx-auto mb-6">
         <Breadcrumbs crumbs={crumbs} />
@@ -167,6 +217,8 @@ export default async function NewsletterPage() {
           </div>
         </div>
       )}
+
+      <NewsletterFaq />
     </div>
   );
 }
