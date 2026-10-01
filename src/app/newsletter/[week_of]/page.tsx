@@ -10,7 +10,13 @@ import {
   newsletterOgPath,
   newsletterShareUrl,
 } from "@/lib/share";
-import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
+import {
+  NEWSLETTER_FAQ_ITEMS,
+  buildBreadcrumbJsonLd,
+  buildFaqPageJsonLd,
+  buildWebPageJsonLd,
+  getSiteBaseUrl,
+} from "@/lib/json-ld";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -87,18 +93,34 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
     headline: newsletter.headline,
   });
 
+  const weekKey = String(newsletter.week_of).slice(0, 10);
   const crumbs = [
     { name: "Home", path: "/" },
     { name: "Newsletter", path: "/newsletter" },
     {
-      name: weekOfLabel(String(newsletter.week_of).slice(0, 10)),
+      name: weekOfLabel(weekKey),
       path: `/newsletter/${week_of}`,
     },
   ];
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
+  const webpageJsonLd = buildWebPageJsonLd({
+    name: `${newsletter.headline} | BPI Weekly`,
+    description: `Burger Price Index weekly market report for ${weekKey}. Bloomberg Terminal energy, Wendy's drive-thru prices.`,
+    path: `/newsletter/${week_of}`,
+    dateModified: weekKey,
+  });
+  const faqJsonLd = buildFaqPageJsonLd(NEWSLETTER_FAQ_ITEMS);
 
   return (
     <div className="min-h-screen bg-[#080810] py-10 px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webpageJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
@@ -121,6 +143,36 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
           label="SHARE THE PRINT"
         />
       </div>
+
+      <section
+        className="max-w-4xl mx-auto mt-12"
+        aria-labelledby="newsletter-faq"
+      >
+        <h2
+          id="newsletter-faq"
+          className="text-[11px] text-green-500/60 font-mono font-bold uppercase tracking-[0.2em] mb-4"
+        >
+          Newsletter FAQ
+        </h2>
+        <div className="space-y-3">
+          {NEWSLETTER_FAQ_ITEMS.map((item) => (
+            <details
+              key={item.q}
+              className="group bg-[#0d0d1a] border border-[#1a3a1a] rounded-2xl px-5 py-4"
+            >
+              <summary className="cursor-pointer list-none font-medium text-sm text-gray-200 flex items-center justify-between gap-4">
+                {item.q}
+                <span className="text-green-500/30 group-open:rotate-45 transition-transform text-lg leading-none">
+                  +
+                </span>
+              </summary>
+              <p className="mt-3 text-sm text-gray-400 leading-relaxed">
+                {item.a}
+              </p>
+            </details>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

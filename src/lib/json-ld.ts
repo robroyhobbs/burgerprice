@@ -488,3 +488,69 @@ export function buildFaqPageJsonLd(items: FaqItem[]): Record<string, unknown> {
     })),
   };
 }
+
+
+export interface WebPageJsonLdOptions {
+  name: string;
+  description: string;
+  /** Path relative to site root, e.g. "/newsletter" or "/newsletter/2026-09-28" */
+  path: string;
+  dateModified?: string | null;
+}
+
+/**
+ * Generic WebPage JSON-LD. Mirrors rankings/cities/about/home shape:
+ * name, description, url, isPartOf WebSite, optional dateModified.
+ */
+export function buildWebPageJsonLd(
+  opts: WebPageJsonLdOptions,
+): Record<string, unknown> {
+  const base = getSiteBaseUrl();
+  const path = opts.path === "/" ? "/" : opts.path.replace(/\/$/, "");
+  const url =
+    path === "/"
+      ? `${base}/`
+      : `${base}${path.startsWith("/") ? path : `/${path}`}`;
+
+  const webpage: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: opts.name,
+    description: opts.description,
+    url,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "Burger Price Index",
+      url: base,
+    },
+  };
+
+  if (opts.dateModified) {
+    webpage.dateModified = opts.dateModified;
+  }
+
+  return webpage;
+}
+
+/**
+ * Newsletter hub + week-detail FAQ — on-page + FAQPage JSON-LD.
+ * Voice: Bloomberg-meets-Wendy's. Factual; mirrors /rankings and /cities FAQ style.
+ */
+export const NEWSLETTER_FAQ_ITEMS: FaqItem[] = [
+  {
+    q: "What is BPI Weekly?",
+    a: "The Burger Price Index market report — a weekly write-up of the national print, city movers, and the tape. Bloomberg Terminal energy, Wendy's drive-thru prices. Same BPI weighting as every city page and /rankings.",
+  },
+  {
+    q: "How often does the newsletter publish?",
+    a: "Weekly, after the collection run clears. The hub at /newsletter always shows the latest edition; older issues sit in the archive below and at dated URLs.",
+  },
+  {
+    q: "What's the difference between /newsletter and a week URL?",
+    a: "/newsletter is the hub: latest edition plus past-edition links. /newsletter/[week_of] is one dated issue. Only the latest week is indexable; archives stay readable but noindex so crawl budget stays on the live print.",
+  },
+  {
+    q: "Where can I see the live index and city rankings?",
+    a: "Home for the national print and showdown, /rankings for the weekly leaderboard, /cities for the card grid. Methodology and weighting live on /about.",
+  },
+];
