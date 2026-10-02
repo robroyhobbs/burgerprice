@@ -38,7 +38,7 @@ export function Footer() {
               <Link href="/about" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
                 About &amp; Methodology
               </Link>
-              <Link href="/about" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
+              <Link href="/about#data-sources" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
                 Data Sources
               </Link>
             </nav>

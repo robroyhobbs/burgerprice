@@ -162,7 +162,7 @@ export default function AboutPage() {
             — cities with 25+ requests get added to the index.
           </p>
 
-          <h2 className="font-headline text-xl text-gray-900 dark:text-white">Methodology</h2>
+          <h2 id="methodology" className="font-headline text-xl text-gray-900 dark:text-white">Methodology</h2>
           <p>
             Each week, we survey burger prices from 10-15 restaurants per city across
             three segments:
@@ -187,7 +187,7 @@ export default function AboutPage() {
             economy, while fast-food prices are largely set nationally.
           </p>
 
-          <h2 className="font-headline text-xl text-gray-900 dark:text-white">Data Sources</h2>
+          <h2 id="data-sources" className="font-headline text-xl text-gray-900 dark:text-white">Data Sources</h2>
           <p>
             Prices are collected from restaurant menus, delivery platforms
             (DoorDash, UberEats), and restaurant websites. We use AI-assisted

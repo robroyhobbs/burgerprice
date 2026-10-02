@@ -56,6 +56,12 @@ export function Header({ cities }: HeaderProps) {
               </h1>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 tracking-wide">
                 Est. 2026 &middot; {cities.length} US Cities
+                {weekLabel ? (
+                  <>
+                    {" "}
+                    &middot; {weekLabel}
+                  </>
+                ) : null}
               </p>
             </div>
           </div>
@@ -86,11 +92,6 @@ export function Header({ cities }: HeaderProps) {
                 About
               </Link>
             </nav>
-            {weekLabel && (
-              <span className="hidden md:inline text-xs text-gray-400 bpi-number border-l border-gray-200 dark:border-grill-lighter pl-4">
-                {weekLabel}
-              </span>
-            )}
             <button
               onClick={toggleTheme}
               className="w-10 h-10 rounded-xl border border-gray-200 dark:border-grill-lighter hover:bg-gray-100 dark:hover:bg-grill-light transition-all flex items-center justify-center text-base"
