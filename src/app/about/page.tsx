@@ -1,5 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { getAllCities } from "@/lib/data";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 import { ShareStrip } from "@/components/share-strip";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
@@ -8,6 +11,9 @@ import {
   aboutShareUrl,
   buildAboutCaption,
 } from "@/lib/share";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 const TITLE = "About | Burger Price Index";
 const DESCRIPTION =
@@ -112,7 +118,8 @@ function buildAboutJsonLd(): Record<string, unknown>[] {
   return [webpage, faqPage, breadcrumb];
 }
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const cities = await getAllCities();
   const jsonLd = buildAboutJsonLd();
 
   return (
@@ -124,143 +131,147 @@ export default function AboutPage() {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(block) }}
         />
       ))}
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <Breadcrumbs
-          className="mb-8"
-          crumbs={[
-            { name: "Home", path: "/" },
-            { name: "About", path: "/about" },
-          ]}
-        />
-
-        <h1 className="font-headline text-3xl md:text-4xl text-ketchup dark:text-mustard mb-6">
-          About the Burger Price Index
-        </h1>
-
-        <div className="mb-8">
-          <ShareStrip
-            shareUrl={aboutShareUrl()}
-            caption={buildAboutCaption({ cityCount: 10 })}
-            label="Share the methodology"
+      <Header cities={cities} />
+      <main>
+        <div className="max-w-3xl mx-auto px-4 py-12">
+          <Breadcrumbs
+            className="mb-8"
+            crumbs={[
+              { name: "Home", path: "/" },
+              { name: "About", path: "/about" },
+            ]}
           />
-        </div>
 
-        <div className="prose prose-gray dark:prose-invert max-w-none space-y-6 text-sm md:text-base leading-relaxed text-gray-700 dark:text-gray-300">
-          <h2 className="font-headline text-xl text-gray-900 dark:text-white">What is the BPI?</h2>
-          <p>
-            The Burger Price Index (BPI) is a weekly index that tracks the average
-            cost of a burger across US cities. Think of it as the Consumer Price
-            Index, but exclusively for the most important food group: burgers.
-          </p>
-          <p>
-            We currently track <strong>10 cities</strong>: Austin, Boston, Chicago,
-            Los Angeles, Nashville, New Orleans, New York, Portland, San Francisco,
-            and Seattle. Don&apos;t see yours? Request it on the{" "}
-            <Link href="/cities" className="text-ketchup dark:text-mustard hover:underline">
-              cities page
-            </Link>
-            — cities with 25+ requests get added to the index.
-          </p>
+          <h1 className="font-headline text-3xl md:text-4xl text-ketchup dark:text-mustard mb-6">
+            About the Burger Price Index
+          </h1>
 
-          <h2 id="methodology" className="font-headline text-xl text-gray-900 dark:text-white">Methodology</h2>
-          <p>
-            Each week, we survey burger prices from 10-15 restaurants per city across
-            three segments:
-          </p>
-          <ul className="list-disc pl-6 space-y-1">
-            <li>
-              <strong>Fast Food (20% weight):</strong> Chain restaurants like
-              McDonald&apos;s, Five Guys, Shake Shack, Wendy&apos;s
-            </li>
-            <li>
-              <strong>Casual/Diner (40% weight):</strong> Local spots, diners, and
-              casual burger joints
-            </li>
-            <li>
-              <strong>Premium/Gourmet (40% weight):</strong> Upscale restaurants
-              with gourmet burger offerings
-            </li>
-          </ul>
-          <p>
-            The BPI is a <em>weighted average</em> of these segments. We weight
-            casual and premium more heavily because they reflect the local dining
-            economy, while fast-food prices are largely set nationally.
-          </p>
-
-          <h2 id="data-sources" className="font-headline text-xl text-gray-900 dark:text-white">Data Sources</h2>
-          <p>
-            Prices are collected from restaurant menus, delivery platforms
-            (DoorDash, UberEats), and restaurant websites. We use AI-assisted
-            research to compile and verify prices weekly, with human review for
-            accuracy.
-          </p>
-          <p>
-            Outlier filtering removes any prices below $1 or above $50 to prevent
-            data quality issues.
-          </p>
-
-          <h2 className="font-headline text-xl text-gray-900 dark:text-white">Why Burgers?</h2>
-          <p>
-            The burger is America&apos;s economic barometer. Every city has them, every
-            price point is represented, and they&apos;re sensitive to beef costs,
-            labor markets, real estate, and consumer sentiment. Plus, tracking
-            burger prices is objectively more fun than tracking treasury yields.
-          </p>
-
-          <h2 className="font-headline text-xl text-gray-900 dark:text-white">Disclaimer</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-            The Burger Price Index is for entertainment and informational purposes
-            only. It is not financial advice, investment guidance, or a substitute
-            for actually going out and eating a burger. Past burger performance is
-            not indicative of future burger results. Eat responsibly.
-          </p>
-        </div>
-
-        {/* Methodology FAQ — visitor Qs that prose alone rarely answers */}
-        <section className="mt-12" aria-labelledby="methodology-faq">
-          <h2
-            id="methodology-faq"
-            className="font-headline text-2xl text-ketchup dark:text-mustard mb-6"
-          >
-            Methodology FAQ
-          </h2>
-          <div className="space-y-4">
-            {FAQ_ITEMS.map((item) => (
-              <details
-                key={item.q}
-                className="group bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter px-5 py-4"
-              >
-                <summary className="cursor-pointer list-none font-medium text-sm text-gray-900 dark:text-white flex items-center justify-between gap-4">
-                  {item.q}
-                  <span className="text-gray-300 dark:text-gray-600 group-open:rotate-45 transition-transform text-lg leading-none">
-                    +
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                  {item.a}
-                </p>
-              </details>
-            ))}
+          <div className="mb-8">
+            <ShareStrip
+              shareUrl={aboutShareUrl()}
+              caption={buildAboutCaption({ cityCount: 10 })}
+              label="Share the methodology"
+            />
           </div>
-          <p className="mt-6 text-xs text-gray-400">
-            Prefer the tape?{" "}
-            <Link
-              href="/rankings"
-              className="text-ketchup dark:text-mustard hover:underline"
+
+          <div className="prose prose-gray dark:prose-invert max-w-none space-y-6 text-sm md:text-base leading-relaxed text-gray-700 dark:text-gray-300">
+            <h2 className="font-headline text-xl text-gray-900 dark:text-white">What is the BPI?</h2>
+            <p>
+              The Burger Price Index (BPI) is a weekly index that tracks the average
+              cost of a burger across US cities. Think of it as the Consumer Price
+              Index, but exclusively for the most important food group: burgers.
+            </p>
+            <p>
+              We currently track <strong>10 cities</strong>: Austin, Boston, Chicago,
+              Los Angeles, Nashville, New Orleans, New York, Portland, San Francisco,
+              and Seattle. Don&apos;t see yours? Request it on the{" "}
+              <Link href="/cities" className="text-ketchup dark:text-mustard hover:underline">
+                cities page
+              </Link>
+              — cities with 25+ requests get added to the index.
+            </p>
+
+            <h2 id="methodology" className="font-headline text-xl text-gray-900 dark:text-white">Methodology</h2>
+            <p>
+              Each week, we survey burger prices from 10-15 restaurants per city across
+              three segments:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                <strong>Fast Food (20% weight):</strong> Chain restaurants like
+                McDonald&apos;s, Five Guys, Shake Shack, Wendy&apos;s
+              </li>
+              <li>
+                <strong>Casual/Diner (40% weight):</strong> Local spots, diners, and
+                casual burger joints
+              </li>
+              <li>
+                <strong>Premium/Gourmet (40% weight):</strong> Upscale restaurants
+                with gourmet burger offerings
+              </li>
+            </ul>
+            <p>
+              The BPI is a <em>weighted average</em> of these segments. We weight
+              casual and premium more heavily because they reflect the local dining
+              economy, while fast-food prices are largely set nationally.
+            </p>
+
+            <h2 id="data-sources" className="font-headline text-xl text-gray-900 dark:text-white">Data Sources</h2>
+            <p>
+              Prices are collected from restaurant menus, delivery platforms
+              (DoorDash, UberEats), and restaurant websites. We use AI-assisted
+              research to compile and verify prices weekly, with human review for
+              accuracy.
+            </p>
+            <p>
+              Outlier filtering removes any prices below $1 or above $50 to prevent
+              data quality issues.
+            </p>
+
+            <h2 className="font-headline text-xl text-gray-900 dark:text-white">Why Burgers?</h2>
+            <p>
+              The burger is America&apos;s economic barometer. Every city has them, every
+              price point is represented, and they&apos;re sensitive to beef costs,
+              labor markets, real estate, and consumer sentiment. Plus, tracking
+              burger prices is objectively more fun than tracking treasury yields.
+            </p>
+
+            <h2 className="font-headline text-xl text-gray-900 dark:text-white">Disclaimer</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+              The Burger Price Index is for entertainment and informational purposes
+              only. It is not financial advice, investment guidance, or a substitute
+              for actually going out and eating a burger. Past burger performance is
+              not indicative of future burger results. Eat responsibly.
+            </p>
+          </div>
+
+          {/* Methodology FAQ — visitor Qs that prose alone rarely answers */}
+          <section className="mt-12" aria-labelledby="methodology-faq">
+            <h2
+              id="methodology-faq"
+              className="font-headline text-2xl text-ketchup dark:text-mustard mb-6"
             >
-              Weekly rankings
-            </Link>
-            {" · "}
-            <Link
-              href="/cities"
-              className="text-ketchup dark:text-mustard hover:underline"
-            >
-              All cities
-            </Link>
-            .
-          </p>
-        </section>
-      </div>
+              Methodology FAQ
+            </h2>
+            <div className="space-y-4">
+              {FAQ_ITEMS.map((item) => (
+                <details
+                  key={item.q}
+                  className="group bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter px-5 py-4"
+                >
+                  <summary className="cursor-pointer list-none font-medium text-sm text-gray-900 dark:text-white flex items-center justify-between gap-4">
+                    {item.q}
+                    <span className="text-gray-300 dark:text-gray-600 group-open:rotate-45 transition-transform text-lg leading-none">
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+            <p className="mt-6 text-xs text-gray-400">
+              Prefer the tape?{" "}
+              <Link
+                href="/rankings"
+                className="text-ketchup dark:text-mustard hover:underline"
+              >
+                Weekly rankings
+              </Link>
+              {" · "}
+              <Link
+                href="/cities"
+                className="text-ketchup dark:text-mustard hover:underline"
+              >
+                All cities
+              </Link>
+              .
+            </p>
+          </section>
+        </div>
+      </main>
+      <Footer />
     </div>
   );
 }
