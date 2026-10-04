@@ -2,6 +2,9 @@ import {
   getLatestNewsletter,
   getNewsletterByWeek,
 } from "@/lib/newsletter-data";
+import { getAllCities } from "@/lib/data";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 import { NewsletterEdition } from "@/components/newsletter-edition";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
@@ -82,7 +85,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function NewsletterEditionPage({ params }: PageProps) {
   const { week_of } = await params;
-  const newsletter = await getNewsletterByWeek(week_of);
+  const [newsletter, cities] = await Promise.all([
+    getNewsletterByWeek(week_of),
+    getAllCities(),
+  ]);
 
   if (!newsletter) {
     notFound();
@@ -113,7 +119,7 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
   const faqJsonLd = buildFaqPageJsonLd(NEWSLETTER_FAQ_ITEMS);
 
   return (
-    <div className="min-h-screen bg-[#080810] py-10 px-6">
+    <div className="min-h-screen bg-[#080810]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(webpageJsonLd) }}
@@ -126,54 +132,59 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
+      <Header cities={cities} />
+      <main>
+        <div className="py-10 px-6">
+          <div className="max-w-4xl mx-auto mb-6">
+            <Breadcrumbs crumbs={crumbs} />
+          </div>
 
-      <div className="max-w-4xl mx-auto mb-6">
-        <Breadcrumbs crumbs={crumbs} />
-      </div>
+          <NewsletterEdition
+            weekOf={newsletter.week_of}
+            headline={newsletter.headline}
+            sections={newsletter.sections}
+          />
 
-      <NewsletterEdition
-        weekOf={newsletter.week_of}
-        headline={newsletter.headline}
-        sections={newsletter.sections}
-      />
+          <div className="max-w-4xl mx-auto">
+            <ShareStrip
+              shareUrl={shareUrl}
+              caption={caption}
+              label="SHARE THE PRINT"
+            />
+          </div>
 
-      <div className="max-w-4xl mx-auto">
-        <ShareStrip
-          shareUrl={shareUrl}
-          caption={caption}
-          label="SHARE THE PRINT"
-        />
-      </div>
-
-      <section
-        className="max-w-4xl mx-auto mt-12"
-        aria-labelledby="newsletter-faq"
-      >
-        <h2
-          id="newsletter-faq"
-          className="text-[11px] text-green-500/60 font-mono font-bold uppercase tracking-[0.2em] mb-4"
-        >
-          Newsletter FAQ
-        </h2>
-        <div className="space-y-3">
-          {NEWSLETTER_FAQ_ITEMS.map((item) => (
-            <details
-              key={item.q}
-              className="group bg-[#0d0d1a] border border-[#1a3a1a] rounded-2xl px-5 py-4"
+          <section
+            className="max-w-4xl mx-auto mt-12"
+            aria-labelledby="newsletter-faq"
+          >
+            <h2
+              id="newsletter-faq"
+              className="text-[11px] text-green-500/60 font-mono font-bold uppercase tracking-[0.2em] mb-4"
             >
-              <summary className="cursor-pointer list-none font-medium text-sm text-gray-200 flex items-center justify-between gap-4">
-                {item.q}
-                <span className="text-green-500/30 group-open:rotate-45 transition-transform text-lg leading-none">
-                  +
-                </span>
-              </summary>
-              <p className="mt-3 text-sm text-gray-400 leading-relaxed">
-                {item.a}
-              </p>
-            </details>
-          ))}
+              Newsletter FAQ
+            </h2>
+            <div className="space-y-3">
+              {NEWSLETTER_FAQ_ITEMS.map((item) => (
+                <details
+                  key={item.q}
+                  className="group bg-[#0d0d1a] border border-[#1a3a1a] rounded-2xl px-5 py-4"
+                >
+                  <summary className="cursor-pointer list-none font-medium text-sm text-gray-200 flex items-center justify-between gap-4">
+                    {item.q}
+                    <span className="text-green-500/30 group-open:rotate-45 transition-transform text-lg leading-none">
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-sm text-gray-400 leading-relaxed">
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </section>
         </div>
-      </section>
+      </main>
+      <Footer />
     </div>
   );
 }

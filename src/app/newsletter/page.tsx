@@ -2,6 +2,9 @@ import {
   getLatestNewsletter,
   getAllNewsletters,
 } from "@/lib/newsletter-data";
+import { getAllCities } from "@/lib/data";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 import { NewsletterEdition } from "@/components/newsletter-edition";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
@@ -100,9 +103,10 @@ function NewsletterFaq() {
 }
 
 export default async function NewsletterPage() {
-  const [latest, allEditions] = await Promise.all([
+  const [latest, allEditions, cities] = await Promise.all([
     getLatestNewsletter(),
     getAllNewsletters(),
+    getAllCities(),
   ]);
 
   const crumbs = [...NEWSLETTER_CRUMBS];
@@ -118,7 +122,7 @@ export default async function NewsletterPage() {
 
   if (!latest) {
     return (
-      <div className="min-h-screen bg-[#080810] py-20 px-6">
+      <div className="min-h-screen bg-[#080810]">
         {jsonLd.map((block, i) => (
           <script
             key={i}
@@ -126,17 +130,23 @@ export default async function NewsletterPage() {
             dangerouslySetInnerHTML={{ __html: JSON.stringify(block) }}
           />
         ))}
-        <div className="max-w-4xl mx-auto text-center">
-          <Breadcrumbs className="mb-8" crumbs={crumbs} />
-          <div className="text-6xl mb-6">📰</div>
-          <h1 className="font-headline text-3xl text-green-400 mb-4">
-            BPI Weekly Newsletter
-          </h1>
-          <p className="text-gray-400 text-lg mb-8">
-            Our analysts are preparing the inaugural edition. Check back soon.
-          </p>
-        </div>
-        <NewsletterFaq />
+        <Header cities={cities} />
+        <main>
+          <div className="py-20 px-6">
+            <div className="max-w-4xl mx-auto text-center">
+              <Breadcrumbs className="mb-8" crumbs={crumbs} />
+              <div className="text-6xl mb-6">📰</div>
+              <h1 className="font-headline text-3xl text-green-400 mb-4">
+                BPI Weekly Newsletter
+              </h1>
+              <p className="text-gray-400 text-lg mb-8">
+                Our analysts are preparing the inaugural edition. Check back soon.
+              </p>
+            </div>
+            <NewsletterFaq />
+          </div>
+        </main>
+        <Footer />
       </div>
     );
   }
@@ -153,7 +163,7 @@ export default async function NewsletterPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#080810] py-10 px-6">
+    <div className="min-h-screen bg-[#080810]">
       {jsonLd.map((block, i) => (
         <script
           key={i}
@@ -161,65 +171,70 @@ export default async function NewsletterPage() {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(block) }}
         />
       ))}
-
-      <div className="max-w-4xl mx-auto mb-6">
-        <Breadcrumbs crumbs={crumbs} />
-      </div>
-
-      {/* Latest Edition */}
-      <NewsletterEdition
-        weekOf={latest.week_of}
-        headline={latest.headline}
-        sections={latest.sections}
-      />
-
-      <div className="max-w-4xl mx-auto">
-        <ShareStrip
-          shareUrl={shareUrl}
-          caption={caption}
-          label="SHARE THE PRINT"
-        />
-      </div>
-
-      {/* Archive */}
-      {pastEditions.length > 0 && (
-        <div className="max-w-4xl mx-auto mt-12">
-          <h2 className="text-[11px] text-green-500/60 font-mono font-bold uppercase tracking-[0.2em] mb-4">
-            Past Editions
-          </h2>
-          <div className="bg-[#0d0d1a] border border-[#1a3a1a] rounded-2xl divide-y divide-[#1a3a1a]">
-            {pastEditions.map((edition) => (
-              <Link
-                key={edition.week_of}
-                href={`/newsletter/${edition.week_of}`}
-                className="block px-6 py-4 hover:bg-[#0f1a0f] transition-colors group"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-green-500/50 font-mono">
-                      {new Date(
-                        edition.week_of + "T00:00:00",
-                      ).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <h3 className="text-sm text-gray-300 group-hover:text-green-400 transition-colors mt-0.5">
-                      {edition.headline}
-                    </h3>
-                  </div>
-                  <span className="text-green-500/30 group-hover:text-green-400 transition-colors">
-                    &rarr;
-                  </span>
-                </div>
-              </Link>
-            ))}
+      <Header cities={cities} />
+      <main>
+        <div className="py-10 px-6">
+          <div className="max-w-4xl mx-auto mb-6">
+            <Breadcrumbs crumbs={crumbs} />
           </div>
-        </div>
-      )}
 
-      <NewsletterFaq />
+          {/* Latest Edition */}
+          <NewsletterEdition
+            weekOf={latest.week_of}
+            headline={latest.headline}
+            sections={latest.sections}
+          />
+
+          <div className="max-w-4xl mx-auto">
+            <ShareStrip
+              shareUrl={shareUrl}
+              caption={caption}
+              label="SHARE THE PRINT"
+            />
+          </div>
+
+          {/* Archive */}
+          {pastEditions.length > 0 && (
+            <div className="max-w-4xl mx-auto mt-12">
+              <h2 className="text-[11px] text-green-500/60 font-mono font-bold uppercase tracking-[0.2em] mb-4">
+                Past Editions
+              </h2>
+              <div className="bg-[#0d0d1a] border border-[#1a3a1a] rounded-2xl divide-y divide-[#1a3a1a]">
+                {pastEditions.map((edition) => (
+                  <Link
+                    key={edition.week_of}
+                    href={`/newsletter/${edition.week_of}`}
+                    className="block px-6 py-4 hover:bg-[#0f1a0f] transition-colors group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-green-500/50 font-mono">
+                          {new Date(
+                            edition.week_of + "T00:00:00",
+                          ).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        <h3 className="text-sm text-gray-300 group-hover:text-green-400 transition-colors mt-0.5">
+                          {edition.headline}
+                        </h3>
+                      </div>
+                      <span className="text-green-500/30 group-hover:text-green-400 transition-colors">
+                        &rarr;
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <NewsletterFaq />
+        </div>
+      </main>
+      <Footer />
     </div>
   );
 }
