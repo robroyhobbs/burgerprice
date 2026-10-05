@@ -27,3 +27,49 @@ export function isFreshShowdownWeek(
   if (now.getUTCDay() !== 1) return false;
   return weekOf === getCurrentWeekOf(now);
 }
+
+/** Hour (UTC) on Monday after which the new weekly print is expected (collect runs 10:00 UTC; ~2h grace). */
+export const INDEX_EXPECTED_BY_UTC_HOUR = 12;
+
+/**
+ * Week the index should be on right now. Before the Monday grace hour the
+ * prior Monday is still the expected print, so health doesn't cry stale at
+ * 3 AM Monday before the collect job has even fired.
+ */
+export function getExpectedIndexWeek(now: Date = new Date()): string {
+  const current = getCurrentWeekOf(now);
+  if (now.getUTCDay() === 1 && now.getUTCHours() < INDEX_EXPECTED_BY_UTC_HOUR) {
+    const d = new Date(`${current}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 7);
+    return d.toISOString().slice(0, 10);
+  }
+  return current;
+}
+
+export interface IndexFreshness {
+  expected_week: string;
+  index_fresh: boolean;
+  weeks_behind: number | null;
+}
+
+/** Compare the latest stored print week against the expected week. */
+export function getIndexFreshness(
+  latestWeek: string | null,
+  now: Date = new Date(),
+): IndexFreshness {
+  const expected = getExpectedIndexWeek(now);
+  if (!latestWeek) {
+    return { expected_week: expected, index_fresh: false, weeks_behind: null };
+  }
+  const latest = Date.parse(`${latestWeek.slice(0, 10)}T00:00:00Z`);
+  const exp = Date.parse(`${expected}T00:00:00Z`);
+  if (Number.isNaN(latest)) {
+    return { expected_week: expected, index_fresh: false, weeks_behind: null };
+  }
+  const weeksBehind = Math.max(0, Math.round((exp - latest) / (7 * 86400000)));
+  return {
+    expected_week: expected,
+    index_fresh: weeksBehind === 0,
+    weeks_behind: weeksBehind,
+  };
+}
