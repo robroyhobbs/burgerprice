@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveDataMode, isDatabaseRequired } from "@/lib/mode";
+import { getIndexFreshness } from "@/lib/week";
 
 export async function GET() {
   const mode = resolveDataMode();
@@ -75,6 +76,8 @@ export async function GET() {
     cities: citiesCount,
     snapshots_count: snapshotsCount,
     latest_week: latestWeek,
+    // Additive freshness signal for the weekly index; status stays "ok" so existing smoke checks don't flip.
+    ...getIndexFreshness(latestWeek),
     timestamp: new Date().toISOString(),
   });
 }
