@@ -69,9 +69,15 @@ jobs:
 
       - name: Run collect
         if: steps.fresh.outputs.stale == 'true'
+        env:
+          GH_CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -euo pipefail
-          SECRET="$(gcloud secrets versions access latest --secret=CRON_SECRET --project="${PROJECT_ID}")"
+          # Prefer a GitHub Actions secret; fall back to Secret Manager (needs secretAccessor on the deploy SA).
+          SECRET="${GH_CRON_SECRET:-}"
+          if [ -z "${SECRET}" ]; then
+            SECRET="$(gcloud secrets versions access latest --secret=CRON_SECRET --project="${PROJECT_ID}")"
+          fi
           echo "::add-mask::${SECRET}"
           URL="$(gcloud run services describe "${SERVICE}" --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
           echo "GET ${URL}/api/cron/collect"
