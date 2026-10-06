@@ -1,0 +1,95 @@
+name: Weekly collect backup
+
+# Safety net for the Cloud Scheduler job (burgerprice-weekly-collect, Mondays 10:00 UTC).
+# Runs a few hours later and only calls /api/cron/collect when /api/health says the
+# index is stale. Collect is idempotent per city/week, so a double run is a no-op.
+on:
+  schedule:
+    - cron: "23 14 * * 1" # Monday 14:23 UTC
+    - cron: "23 14 * * 2" # Tuesday 14:23 UTC (second chance)
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Run collect even if /api/health reports the index fresh"
+        type: boolean
+        default: false
+
+concurrency:
+  group: weekly-collect
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: gen-lang-client-0405402450
+  REGION: us-central1
+  SERVICE: burgerprice-web
+  PUBLIC_HEALTH: https://burgerprice.com/api/health
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check index freshness
+        id: fresh
+        run: |
+          set -euo pipefail
+          BODY="$(curl -fsS --retry 3 --retry-delay 5 "${PUBLIC_HEALTH}")"
+          echo "health: ${BODY}"
+          printf '%s' "${BODY}" > /tmp/health.json
+          STALE="$(python3 -c '
+          import json
+          d = json.load(open("/tmp/health.json"))
+          print("false" if d.get("index_fresh") is True else "true")
+          ')"
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then STALE=true; fi
+          echo "stale=${STALE}" >> "${GITHUB_OUTPUT}"
+          echo "Index stale (or forced): ${STALE}"
+
+      - name: Authenticate to Google Cloud (WIF)
+        if: steps.fresh.outputs.stale == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        if: steps.fresh.outputs.stale == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Scheduler diagnostics (best effort)
+        if: steps.fresh.outputs.stale == 'true'
+        continue-on-error: true
+        run: |
+          gcloud scheduler jobs list --project="${PROJECT_ID}" --location="${REGION}" \
+            --format="table(name.basename(),schedule,state,lastAttemptTime,status.code)" || true
+
+      - name: Run collect
+        if: steps.fresh.outputs.stale == 'true'
+        run: |
+          set -euo pipefail
+          SECRET="$(gcloud secrets versions access latest --secret=CRON_SECRET --project="${PROJECT_ID}")"
+          echo "::add-mask::${SECRET}"
+          URL="$(gcloud run services describe "${SERVICE}" --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          echo "GET ${URL}/api/cron/collect"
+          HTTP="$(curl -sS -o /tmp/collect.json -w '%{http_code}' --max-time 900 \
+            -H "X-Cron-Secret: ${SECRET}" "${URL}/api/cron/collect")"
+          echo "HTTP ${HTTP}"
+          cat /tmp/collect.json; echo
+          [ "${HTTP}" = "200" ]
+
+      - name: Verify freshness
+        if: steps.fresh.outputs.stale == 'true'
+        run: |
+          set -euo pipefail
+          BODY="$(curl -fsS --retry 3 --retry-delay 5 "${PUBLIC_HEALTH}")"
+          echo "health after: ${BODY}"
+          printf '%s' "${BODY}" > /tmp/health.json
+          python3 -c '
+          import json, sys
+          d = json.load(open("/tmp/health.json"))
+          sys.exit(0 if d.get("index_fresh") is True else "index still stale after collect")
+          '
