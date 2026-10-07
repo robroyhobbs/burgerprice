@@ -1,4 +1,5 @@
 import {
+  getAllNewsletters,
   getLatestNewsletter,
   getNewsletterByWeek,
 } from "@/lib/newsletter-data";
@@ -8,6 +9,7 @@ import { Footer } from "@/components/footer";
 import { NewsletterEdition } from "@/components/newsletter-edition";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
+import { EditionNav } from "@/components/edition-nav";
 import {
   buildNewsletterCaption,
   newsletterOgPath,
@@ -85,9 +87,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function NewsletterEditionPage({ params }: PageProps) {
   const { week_of } = await params;
-  const [newsletter, cities] = await Promise.all([
+  const [newsletter, cities, editions] = await Promise.all([
     getNewsletterByWeek(week_of),
     getAllCities(),
+    getAllNewsletters(),
   ]);
 
   if (!newsletter) {
@@ -110,6 +113,16 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
     },
   ];
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
+
+  // editions are sorted newest first; neighbors by week_of key.
+  const editionKeys = editions.map((e) => ({
+    week_of: String(e.week_of).slice(0, 10),
+    headline: e.headline,
+  }));
+  const idx = editionKeys.findIndex((e) => e.week_of === weekKey);
+  const newer = idx > 0 ? editionKeys[idx - 1] : null;
+  const older =
+    idx >= 0 && idx < editionKeys.length - 1 ? editionKeys[idx + 1] : null;
   const webpageJsonLd = buildWebPageJsonLd({
     name: `${newsletter.headline} | BPI Weekly`,
     description: `Burger Price Index weekly market report for ${weekKey}. Bloomberg Terminal energy, Wendy's drive-thru prices.`,
@@ -151,6 +164,7 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
               caption={caption}
               label="SHARE THE PRINT"
             />
+            <EditionNav older={older} newer={newer} />
           </div>
 
           <section
