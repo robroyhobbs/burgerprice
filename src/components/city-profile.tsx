@@ -1,7 +1,7 @@
 "use client";
 
 import type { CityDashboardData, RawPrice } from "@/lib/types";
-import { getRestaurantUrl } from "@/lib/restaurant-utils";
+import { getRestaurantUrl, summarizePriceTiers } from "@/lib/restaurant-utils";
 import { getMinimumWage } from "@/lib/wages";
 import {
   buildCityRead,
@@ -75,6 +75,8 @@ export function CityProfile({
   // Reuse the same ascending history the candlestick chart already charts.
   const tapePrints = sliceRecentTape(data.history, 5);
   const tapeStory = buildTapeStory(city.name, tapePrints);
+
+  const tierSummary = summarizePriceTiers(rawPrices);
 
   const wage = getMinimumWage(city.slug);
   const burgersPerHour =
@@ -422,6 +424,38 @@ export function CityProfile({
               </p>
             </div>
           </div>
+
+          {tierSummary.length > 0 && (
+            <div
+              className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"
+              aria-label={`${city.name} burger prices by tier this week`}
+            >
+              {tierSummary.map((t) => (
+                <div
+                  key={t.tier}
+                  className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter px-5 py-4"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">
+                      {t.label}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {t.count} {t.count === 1 ? "spot" : "spots"}
+                    </span>
+                  </div>
+                  <div className="bpi-number text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    ${t.avg.toFixed(2)}
+                    <span className="text-xs font-normal text-gray-400 ml-1">avg</span>
+                  </div>
+                  <div className="bpi-number text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {t.count > 1
+                      ? `Range $${t.low.toFixed(2)} to $${t.high.toFixed(2)}`
+                      : "Single sample this week"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="bg-white dark:bg-grill-light rounded-3xl border border-gray-200 dark:border-grill-lighter overflow-hidden">
             <div className="grid grid-cols-[1fr_1fr_5rem_6rem] gap-2 px-6 py-3 border-b border-gray-100 dark:border-grill-lighter text-[10px] uppercase tracking-widest text-gray-400 font-medium">
