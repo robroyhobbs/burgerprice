@@ -60,3 +60,55 @@ export function summarizePriceTiers(
     ];
   });
 }
+
+export interface TierCityRank {
+  slug: string;
+  name: string;
+  state: string;
+  avg: number;
+  count: number;
+}
+
+export interface TierLeaderboard {
+  tier: PriceTier;
+  label: string;
+  /** Average of the city tier averages (cities with samples only). */
+  nationalAvg: number;
+  /** Cities sorted cheapest first by tier average. */
+  cities: TierCityRank[];
+}
+
+/**
+ * Cross-city view of each tier: which cities are cheapest and priciest for
+ * fast food, casual, and premium burgers this week. Tiers with no samples
+ * anywhere are omitted.
+ */
+export function buildTierLeaderboards(
+  cities: {
+    city: { slug: string; name: string; state: string };
+    prices: { price: number; category: string }[];
+  }[],
+): TierLeaderboard[] {
+  const tiers: PriceTier[] = ["fast_food", "casual", "premium"];
+  return tiers.flatMap((tier) => {
+    const ranks: TierCityRank[] = cities.flatMap((c) => {
+      const t = summarizePriceTiers(c.prices).find((s) => s.tier === tier);
+      if (!t) return [];
+      return [
+        {
+          slug: c.city.slug,
+          name: c.city.name,
+          state: c.city.state,
+          avg: t.avg,
+          count: t.count,
+        },
+      ];
+    });
+    if (ranks.length === 0) return [];
+    ranks.sort((a, b) => a.avg - b.avg);
+    const nationalAvg =
+      Math.round((ranks.reduce((s, r) => s + r.avg, 0) / ranks.length) * 100) /
+      100;
+    return [{ tier, label: TIER_LABELS[tier], nationalAvg, cities: ranks }];
+  });
+}

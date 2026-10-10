@@ -13,6 +13,7 @@ import {
   rankingsShareUrl,
 } from "@/lib/share";
 import type { CityDashboardData } from "@/lib/types";
+import { buildTierLeaderboards, type TierLeaderboard } from "@/lib/restaurant-utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -59,6 +60,10 @@ const FAQ_ITEMS = [
   {
     q: "How often does the leaderboard update?",
     a: "Every week. We reprint the national average and reshuffle the city table after the latest collection run clears.",
+  },
+  {
+    q: "Which city has the cheapest burgers by type?",
+    a: "The Cheapest by Tier section ranks every city on its average fast-food, casual, and premium burger price this week, so you can see where a drive-thru burger or a sit-down burger costs least, separate from the overall BPI.",
   },
   {
     q: "Where can I dig into a single city?",
@@ -194,6 +199,15 @@ export default async function RankingsPage() {
         year: "numeric",
       })
     : null;
+
+  const tierBoards = buildTierLeaderboards(
+    cities
+      .filter((c) => c.currentSnapshot)
+      .map((c) => ({
+        city: c.city,
+        prices: c.currentSnapshot?.raw_prices ?? [],
+      })),
+  );
 
   const jsonLd = buildJsonLd(ranked, weekOf);
   const natUp = nationalChange !== null && nationalChange > 0;
@@ -362,6 +376,35 @@ export default async function RankingsPage() {
           </section>
         )}
 
+        {tierBoards.length > 0 && (
+          <section
+            className="max-w-7xl mx-auto px-6 py-8"
+            aria-labelledby="tier-rankings-heading"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-ketchup/10 dark:bg-mustard/10 flex items-center justify-center text-lg">
+                🍔
+              </div>
+              <div>
+                <h2
+                  id="tier-rankings-heading"
+                  className="font-headline text-2xl text-ketchup dark:text-mustard leading-none"
+                >
+                  Cheapest by Tier
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Average burger price by type, cheapest city first
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {tierBoards.map((board) => (
+                <TierColumn key={board.tier} board={board} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Full leaderboard */}
         <Leaderboard cities={cities} showFullPageLink={false} />
 
@@ -405,6 +448,71 @@ export default async function RankingsPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+function TierColumn({ board }: { board: TierLeaderboard }) {
+  const top = board.cities.slice(0, 3);
+  const priciest =
+    board.cities.length > 3 ? board.cities[board.cities.length - 1] : null;
+  return (
+    <div className="bg-white dark:bg-grill-light rounded-3xl border border-gray-200 dark:border-grill-lighter overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 dark:border-grill-lighter flex items-baseline justify-between gap-3">
+        <h3 className="font-headline text-lg text-gray-900 dark:text-white">
+          {board.label}
+        </h3>
+        <p className="bpi-number text-xs text-gray-400">
+          ${board.nationalAvg.toFixed(2)} avg across {board.cities.length}{" "}
+          {board.cities.length === 1 ? "city" : "cities"}
+        </p>
+      </div>
+      <ol>
+        {top.map((c, i) => (
+          <li key={c.slug}>
+            <TierRow rank={i + 1} item={c} />
+          </li>
+        ))}
+      </ol>
+      {priciest && (
+        <div className="border-t border-gray-100 dark:border-grill-lighter">
+          <p className="px-6 pt-3 text-[10px] uppercase tracking-widest text-gray-400 font-medium">
+            Priciest
+          </p>
+          <TierRow rank={board.cities.length} item={priciest} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TierRow({
+  rank,
+  item,
+}: {
+  rank: number;
+  item: TierLeaderboard["cities"][number];
+}) {
+  return (
+    <Link
+      href={`/cities/${item.slug}`}
+      className="flex items-center justify-between gap-3 px-6 py-3 hover:bg-gray-50 dark:hover:bg-grill transition-colors"
+    >
+      <div className="flex items-baseline gap-3">
+        <span className="bpi-number text-xs text-gray-400 w-5">{rank}</span>
+        <p className="font-medium text-sm text-gray-900 dark:text-white">
+          {item.name}
+          <span className="text-gray-400 ml-1">{item.state}</span>
+        </p>
+      </div>
+      <div className="text-right">
+        <p className="bpi-number text-sm font-bold text-gray-900 dark:text-white">
+          ${item.avg.toFixed(2)}
+        </p>
+        <p className="text-[10px] text-gray-400">
+          {item.count} {item.count === 1 ? "spot" : "spots"}
+        </p>
+      </div>
+    </Link>
   );
 }
 
