@@ -9,6 +9,7 @@ import {
   getSiteBaseUrl,
 } from "@/lib/json-ld";
 import { CityProfile, type PeerCity } from "@/components/city-profile";
+import { buildTierLeaderboards, cityTierStandings } from "@/lib/restaurant-utils";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import type { Metadata } from "next";
@@ -87,6 +88,17 @@ export default async function CityPage({ params }: CityPageProps) {
   const nationalAvg = calculateNationalAverage(allCities);
   const rank = calculateRank(allCities, cityData.city.slug);
   const peerCities = findPeerCities(allCities, cityData.city.slug, 2);
+  const tierStandings = cityTierStandings(
+    buildTierLeaderboards(
+      allCities
+        .filter((c) => c.currentSnapshot)
+        .map((c) => ({
+          city: c.city,
+          prices: c.currentSnapshot?.raw_prices ?? [],
+        })),
+    ),
+    cityData.city.slug,
+  );
   const webpageJsonLd = buildCityPageJsonLd(cityData);
   const breadcrumbJsonLd = buildCityBreadcrumbJsonLd({
     name: cityData.city.name,
@@ -136,6 +148,7 @@ export default async function CityPage({ params }: CityPageProps) {
           rank={rank}
           totalCities={allCities.length}
           peerCities={peerCities}
+          tierStandings={tierStandings}
         />
 
         {/* FAQ — mirrors FAQPage JSON-LD */}

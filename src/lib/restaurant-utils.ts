@@ -112,3 +112,40 @@ export function buildTierLeaderboards(
     return [{ tier, label: TIER_LABELS[tier], nationalAvg, cities: ranks }];
   });
 }
+
+export interface CityTierStanding {
+  tier: PriceTier;
+  /** 1 = cheapest city for this tier. */
+  rank: number;
+  /** Cities with samples in this tier. */
+  of: number;
+  /** Average of the city tier averages across all cities. */
+  nationalAvg: number;
+  /** City tier avg vs the cross-city tier avg, in percent (one decimal). */
+  diffPct: number;
+}
+
+/**
+ * Where one city's tier averages sit against every other city this week,
+ * derived from buildTierLeaderboards so it matches /rankings exactly.
+ */
+export function cityTierStandings(
+  boards: TierLeaderboard[],
+  slug: string,
+): Partial<Record<PriceTier, CityTierStanding>> {
+  const out: Partial<Record<PriceTier, CityTierStanding>> = {};
+  for (const board of boards) {
+    const idx = board.cities.findIndex((c) => c.slug === slug);
+    if (idx === -1 || board.nationalAvg <= 0) continue;
+    const avg = board.cities[idx].avg;
+    out[board.tier] = {
+      tier: board.tier,
+      rank: idx + 1,
+      of: board.cities.length,
+      nationalAvg: board.nationalAvg,
+      diffPct:
+        Math.round(((avg - board.nationalAvg) / board.nationalAvg) * 1000) / 10,
+    };
+  }
+  return out;
+}
