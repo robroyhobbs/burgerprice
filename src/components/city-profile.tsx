@@ -1,7 +1,12 @@
 "use client";
 
 import type { CityDashboardData, RawPrice } from "@/lib/types";
-import { getRestaurantUrl, summarizePriceTiers } from "@/lib/restaurant-utils";
+import {
+  getRestaurantUrl,
+  summarizePriceTiers,
+  type CityTierStanding,
+  type PriceTier,
+} from "@/lib/restaurant-utils";
 import { getMinimumWage } from "@/lib/wages";
 import {
   buildCityRead,
@@ -30,6 +35,7 @@ interface CityProfileProps {
   rank: number;
   totalCities: number;
   peerCities?: PeerCity[];
+  tierStandings?: Partial<Record<PriceTier, CityTierStanding>>;
 }
 
 function findWebsite(name: string, prices: RawPrice[]): string | null {
@@ -43,6 +49,7 @@ export function CityProfile({
   rank,
   totalCities,
   peerCities = [],
+  tierStandings = {},
 }: CityProfileProps) {
   const { city, currentSnapshot, spotlight } = data;
   const bpi = currentSnapshot?.bpi_score ?? null;
@@ -452,6 +459,33 @@ export function CityProfile({
                       ? `Range $${t.low.toFixed(2)} to $${t.high.toFixed(2)}`
                       : "Single sample this week"}
                   </div>
+                  {(() => {
+                    const st = tierStandings[t.tier];
+                    if (!st || st.of < 2) return null;
+                    const flat = Math.abs(st.diffPct) < 0.5;
+                    const tone = flat
+                      ? "text-gray-500 dark:text-gray-400"
+                      : st.diffPct < 0
+                        ? "text-lettuce dark:text-lettuce-light"
+                        : "text-ketchup dark:text-mustard";
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-grill-lighter text-xs">
+                        <div className={`bpi-number font-medium ${tone}`}>
+                          {flat
+                            ? "In line with"
+                            : `${Math.abs(st.diffPct).toFixed(1)}% ${st.diffPct < 0 ? "below" : "above"}`}{" "}
+                          the {st.of}-city avg ($
+                          {st.nationalAvg.toFixed(2)})
+                        </div>
+                        <Link
+                          href="/rankings#tier-rankings-heading"
+                          className="text-gray-400 hover:text-ketchup dark:hover:text-mustard hover:underline"
+                        >
+                          #{st.rank} cheapest of {st.of} for {t.label.toLowerCase()}
+                        </Link>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
