@@ -5,6 +5,7 @@ import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Leaderboard } from "@/components/leaderboard";
+import { BiggestMovers } from "@/components/biggest-movers";
 import { ShareStrip } from "@/components/share-strip";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
@@ -73,7 +74,6 @@ const FAQ_ITEMS = [
 
 type RankedCity = CityDashboardData & {
   bpi: number | null;
-  change: number | null;
 };
 
 function rankCities(cities: CityDashboardData[]): RankedCity[] {
@@ -81,7 +81,6 @@ function rankCities(cities: CityDashboardData[]): RankedCity[] {
     .map((c) => ({
       ...c,
       bpi: c.currentSnapshot?.bpi_score ?? null,
-      change: c.currentSnapshot?.change_pct ?? null,
     }))
     .sort((a, b) => {
       if (a.bpi === null && b.bpi === null) return 0;
@@ -174,17 +173,6 @@ export default async function RankingsPage() {
     nationalCurrent?.week_of ??
     cities.find((c) => c.currentSnapshot)?.currentSnapshot?.week_of ??
     null;
-
-  const withChange = ranked.filter(
-    (c): c is RankedCity & { change: number } =>
-      c.change !== null && c.change !== 0,
-  );
-  const risers = [...withChange]
-    .sort((a, b) => b.change - a.change)
-    .slice(0, 3);
-  const fallers = [...withChange]
-    .sort((a, b) => a.change - b.change)
-    .slice(0, 3);
 
   const withBpi = ranked.filter(
     (c): c is RankedCity & { bpi: number } => c.bpi !== null,
@@ -343,38 +331,7 @@ export default async function RankingsPage() {
           </section>
         )}
 
-        {/* Movers */}
-        {(risers.length > 0 || fallers.length > 0) && (
-          <section className="max-w-7xl mx-auto px-6 py-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-ketchup/10 dark:bg-mustard/10 flex items-center justify-center text-lg">
-                📈
-              </div>
-              <div>
-                <h2 className="font-headline text-2xl text-ketchup dark:text-mustard leading-none">
-                  Biggest Movers
-                </h2>
-                <p className="text-xs text-gray-400 mt-1">
-                  Week-over-week BPI swings
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <MoverColumn
-                title="Risers"
-                subtitle="Prices heating up"
-                items={risers}
-                tone="up"
-              />
-              <MoverColumn
-                title="Fallers"
-                subtitle="Prices cooling off"
-                items={fallers}
-                tone="down"
-              />
-            </div>
-          </section>
-        )}
+        <BiggestMovers cities={cities} />
 
         {tierBoards.length > 0 && (
           <section
@@ -513,63 +470,5 @@ function TierRow({
         </p>
       </div>
     </Link>
-  );
-}
-
-function MoverColumn({
-  title,
-  subtitle,
-  items,
-  tone,
-}: {
-  title: string;
-  subtitle: string;
-  items: RankedCity[];
-  tone: "up" | "down";
-}) {
-  return (
-    <div className="bg-white dark:bg-grill-light rounded-3xl border border-gray-200 dark:border-grill-lighter overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100 dark:border-grill-lighter">
-        <h3 className="font-headline text-lg text-gray-900 dark:text-white">
-          {title}
-        </h3>
-        <p className="text-xs text-gray-400">{subtitle}</p>
-      </div>
-      {items.length === 0 ? (
-        <p className="px-6 py-6 text-sm text-gray-400">No movers this week.</p>
-      ) : (
-        items.map((item) => {
-          const isUp = (item.change ?? 0) > 0;
-          return (
-            <Link
-              key={item.city.slug}
-              href={`/cities/${item.city.slug}`}
-              className="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-50 dark:border-grill-lighter/50 last:border-b-0 hover:bg-gray-50 dark:hover:bg-grill transition-colors"
-            >
-              <div>
-                <p className="font-medium text-sm text-gray-900 dark:text-white">
-                  {item.city.name}
-                  <span className="text-gray-400 ml-1">{item.city.state}</span>
-                </p>
-                <p className="bpi-number text-xs text-gray-400 mt-0.5">
-                  {item.bpi != null ? `$${item.bpi.toFixed(2)}` : "—"}
-                </p>
-              </div>
-              <span
-                className={`bpi-number text-sm font-bold ${
-                  tone === "up" || isUp
-                    ? "text-negative dark:text-red-400"
-                    : "text-lettuce dark:text-lettuce-light"
-                }`}
-              >
-                {item.change != null
-                  ? `${item.change > 0 ? "+" : ""}${item.change.toFixed(1)}%`
-                  : "—"}
-              </span>
-            </Link>
-          );
-        })
-      )}
-    </div>
   );
 }
