@@ -10,6 +10,7 @@ import { NationalBpi } from "@/components/national-bpi";
 import { BpiExplainer } from "@/components/bpi-explainer";
 import { CityShowdown } from "@/components/city-showdown";
 import { Leaderboard } from "@/components/leaderboard";
+import { BiggestMovers } from "@/components/biggest-movers";
 import { CandlestickChart } from "@/components/candlestick-chart";
 import { MarketReport } from "@/components/market-report";
 import { IndustryNews } from "@/components/industry-news";
@@ -277,6 +278,7 @@ export default async function Home({ searchParams }: HomeProps) {
           </section>
         ) : null}
 
+        <BiggestMovers cities={data.cities} showFullPageLink />
         <Leaderboard cities={data.cities} />
         <CandlestickChart cities={trendCities} />
         <MarketReport report={data.latestReport} />
