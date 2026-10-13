@@ -9,9 +9,16 @@ import { CityRequestForm } from "./city-request-form";
 
 interface CitiesIndexProps {
   cities: CityDashboardData[];
+  /** Current-week national BPI (avg across tracked cities). */
+  nationalBpi?: number | null;
 }
 
-export function CitiesIndex({ cities }: CitiesIndexProps) {
+function vsNationalPct(bpi: number | null, national: number | null): number | null {
+  if (bpi === null || national === null || national <= 0) return null;
+  return ((bpi - national) / national) * 100;
+}
+
+export function CitiesIndex({ cities, nationalBpi = null }: CitiesIndexProps) {
   const [search, setSearch] = useState("");
   const [nearestInfo, setNearestInfo] = useState<NearMeResult | null>(null);
   const router = useRouter();
@@ -87,6 +94,7 @@ export function CitiesIndex({ cities }: CitiesIndexProps) {
                     (a.currentSnapshot?.bpi_score ?? 0),
                 )
                 .findIndex((c) => c.city.slug === item.city.slug) + 1;
+            const vsNational = vsNationalPct(bpi, nationalBpi);
 
             return (
               <Link
@@ -126,6 +134,27 @@ export function CitiesIndex({ cities }: CitiesIndexProps) {
                     <span className="text-gray-300 text-sm">—</span>
                   )}
                 </div>
+                {vsNational !== null && nationalBpi !== null && (
+                  <p className="mt-3 pt-3 border-t border-gray-100 dark:border-grill-lighter text-xs text-gray-500 dark:text-gray-400">
+                    {Math.abs(vsNational) < 0.05 ? (
+                      <>In line with national ${nationalBpi.toFixed(2)}</>
+                    ) : (
+                      <>
+                        <span
+                          className={`bpi-number font-bold ${
+                            vsNational > 0
+                              ? "text-negative dark:text-red-400"
+                              : "text-lettuce dark:text-lettuce-light"
+                          }`}
+                        >
+                          {Math.abs(vsNational).toFixed(1)}%{" "}
+                          {vsNational > 0 ? "above" : "below"}
+                        </span>{" "}
+                        national ${nationalBpi.toFixed(2)}
+                      </>
+                    )}
+                  </p>
+                )}
               </Link>
             );
           })}
