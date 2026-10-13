@@ -56,7 +56,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "What does each city card show?",
-    a: "City name and state, rank among tracked cities, current BPI dollars, and week-over-week change when we have one. Tap through for restaurant prices and trends.",
+    a: "City name and state, rank among tracked cities, current BPI dollars, week-over-week change when we have one, and how far the city sits above or below the national BPI (the average across tracked cities). Tap through for restaurant prices and trends.",
   },
   {
     q: "How do I find my city or request a new one?",
@@ -217,7 +217,14 @@ export default async function CitiesPage() {
             />
           </section>
         )}
-        <CitiesIndex cities={cities} />
+        <CitiesIndex
+          cities={cities}
+          nationalBpi={
+            nationalCurrent && nationalCurrent.week_of === weekOf
+              ? nationalCurrent.avg_bpi
+              : null
+          }
+        />
 
         {/* FAQ */}
         <section className="max-w-7xl mx-auto px-6 py-10">
