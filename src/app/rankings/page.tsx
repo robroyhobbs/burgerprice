@@ -363,7 +363,16 @@ export default async function RankingsPage() {
         )}
 
         {/* Full leaderboard */}
-        <Leaderboard cities={cities} showFullPageLink={false} />
+        <Leaderboard
+          cities={cities}
+          showFullPageLink={false}
+          nationalBpi={
+            nationalCurrent &&
+            (!weekOf || nationalCurrent.week_of === weekOf)
+              ? nationalCurrent.avg_bpi
+              : null
+          }
+        />
 
         <div className="max-w-7xl mx-auto px-6 pb-4 -mt-4">
           <p className="text-xs text-gray-400">

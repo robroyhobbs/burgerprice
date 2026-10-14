@@ -1,15 +1,19 @@
 import type { CityDashboardData } from "@/lib/types";
+import { vsNationalPct } from "@/lib/bpi";
 import Link from "next/link";
 
 interface LeaderboardProps {
   cities: CityDashboardData[];
   /** When true (default on homepage), show a link to the full /rankings page. */
   showFullPageLink?: boolean;
+  /** Current-week national BPI (avg across tracked cities). */
+  nationalBpi?: number | null;
 }
 
 export function Leaderboard({
   cities,
   showFullPageLink = true,
+  nationalBpi = null,
 }: LeaderboardProps) {
   // Sort cities by BPI score descending, cities without data go last
   const ranked = [...cities]
@@ -65,6 +69,7 @@ export function Leaderboard({
           const rank = index + 1;
           const isPositive = item.change !== null && item.change > 0;
           const isNegative = item.change !== null && item.change < 0;
+          const vsNational = vsNationalPct(item.bpi, nationalBpi);
 
           return (
             <Link
@@ -75,12 +80,35 @@ export function Leaderboard({
               <span className="bpi-number text-sm font-bold text-gray-300 dark:text-gray-600">
                 {rank}
               </span>
-              <span className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                {item.city.name}
-                <span className="text-gray-400 dark:text-gray-500 ml-1">
-                  {item.city.state}
+              <div className="min-w-0">
+                <span className="font-medium text-sm text-gray-900 dark:text-white truncate block">
+                  {item.city.name}
+                  <span className="text-gray-400 dark:text-gray-500 ml-1">
+                    {item.city.state}
+                  </span>
                 </span>
-              </span>
+                {vsNational !== null && nationalBpi !== null && (
+                  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                    {Math.abs(vsNational) < 0.05 ? (
+                      <>In line with national ${nationalBpi.toFixed(2)}</>
+                    ) : (
+                      <>
+                        <span
+                          className={`bpi-number font-bold ${
+                            vsNational > 0
+                              ? "text-negative dark:text-red-400"
+                              : "text-lettuce dark:text-lettuce-light"
+                          }`}
+                        >
+                          {Math.abs(vsNational).toFixed(1)}%{" "}
+                          {vsNational > 0 ? "above" : "below"}
+                        </span>{" "}
+                        national ${nationalBpi.toFixed(2)}
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
               <span className="bpi-number text-sm font-bold text-right text-gray-900 dark:text-white">
                 {item.bpi !== null ? `$${item.bpi.toFixed(2)}` : "—"}
               </span>
