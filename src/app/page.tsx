@@ -279,7 +279,15 @@ export default async function Home({ searchParams }: HomeProps) {
         ) : null}
 
         <BiggestMovers cities={data.cities} showFullPageLink />
-        <Leaderboard cities={data.cities} />
+        <Leaderboard
+          cities={data.cities}
+          nationalBpi={
+            nationalCurrent &&
+            (!data.weekOf || nationalCurrent.week_of === data.weekOf)
+              ? nationalCurrent.avg_bpi
+              : null
+          }
+        />
         <CandlestickChart cities={trendCities} />
         <MarketReport report={data.latestReport} />
         <IndustryNews news={data.news} />

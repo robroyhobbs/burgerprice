@@ -81,3 +81,15 @@ export function findExtremes(prices: RawPrice[]) {
     },
   };
 }
+
+/**
+ * Percent a city BPI sits above/below the national BPI (avg across tracked cities).
+ * Returns null when either value is missing or national is non-positive.
+ */
+export function vsNationalPct(
+  bpi: number | null,
+  national: number | null,
+): number | null {
+  if (bpi === null || national === null || national <= 0) return null;
+  return ((bpi - national) / national) * 100;
+}

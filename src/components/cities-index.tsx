@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { CityDashboardData } from "@/lib/types";
+import { vsNationalPct } from "@/lib/bpi";
 import { NearMeButton, type NearMeResult } from "./near-me";
 import { CityRequestForm } from "./city-request-form";
 
@@ -11,11 +12,6 @@ interface CitiesIndexProps {
   cities: CityDashboardData[];
   /** Current-week national BPI (avg across tracked cities). */
   nationalBpi?: number | null;
-}
-
-function vsNationalPct(bpi: number | null, national: number | null): number | null {
-  if (bpi === null || national === null || national <= 0) return null;
-  return ((bpi - national) / national) * 100;
 }
 
 export function CitiesIndex({ cities, nationalBpi = null }: CitiesIndexProps) {
