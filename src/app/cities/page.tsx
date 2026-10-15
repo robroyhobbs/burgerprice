@@ -52,7 +52,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: "How is the city grid ordered?",
-    a: "By current-week BPI, highest to lowest. Cities without a print yet sink to the bottom. Same sort as the rankings table — grid layout, not rows.",
+    a: "Default is priciest first (highest current-week BPI), matching the rankings table. Use the Cheapest first / Priciest first toggle above the grid to flip it. Cities without a print yet sink to the bottom either way.",
   },
   {
     q: "What does each city card show?",
