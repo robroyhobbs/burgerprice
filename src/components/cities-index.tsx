@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { CityDashboardData } from "@/lib/types";
 import { vsNationalPct } from "@/lib/bpi";
 import { NearMeButton, type NearMeResult } from "./near-me";
 import { CityRequestForm } from "./city-request-form";
+
+type SortMode = "pricey" | "cheap";
 
 interface CitiesIndexProps {
   cities: CityDashboardData[];
@@ -16,19 +18,38 @@ interface CitiesIndexProps {
 
 export function CitiesIndex({ cities, nationalBpi = null }: CitiesIndexProps) {
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortMode>("pricey");
   const [nearestInfo, setNearestInfo] = useState<NearMeResult | null>(null);
   const router = useRouter();
 
-  // Sort by BPI descending, no-data cities last
-  const ranked = [...cities]
-    .sort((a, b) => {
-      const aScore = a.currentSnapshot?.bpi_score ?? -1;
-      const bScore = b.currentSnapshot?.bpi_score ?? -1;
+  // Rank # is always priciest-first among cities with a print.
+  const rankedByPrice = useMemo(() => {
+    return [...cities].sort((a, b) => {
+      const aScore = a.currentSnapshot?.bpi_score ?? null;
+      const bScore = b.currentSnapshot?.bpi_score ?? null;
+      if (aScore === null && bScore === null) return 0;
+      if (aScore === null) return 1;
+      if (bScore === null) return -1;
       return bScore - aScore;
-    })
-    .filter((c) =>
-      `${c.city.name} ${c.city.state}`.toLowerCase().includes(search.toLowerCase()),
-    );
+    });
+  }, [cities]);
+
+  const ranked = useMemo(() => {
+    return [...cities]
+      .sort((a, b) => {
+        const aScore = a.currentSnapshot?.bpi_score ?? null;
+        const bScore = b.currentSnapshot?.bpi_score ?? null;
+        if (aScore === null && bScore === null) return 0;
+        if (aScore === null) return 1;
+        if (bScore === null) return -1;
+        return sort === "cheap" ? aScore - bScore : bScore - aScore;
+      })
+      .filter((c) =>
+        `${c.city.name} ${c.city.state}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+      );
+  }, [cities, sort, search]);
 
   function handleNearMeFound(result: NearMeResult) {
     setNearestInfo(result);
@@ -62,8 +83,8 @@ export function CitiesIndex({ cities, nationalBpi = null }: CitiesIndexProps) {
         )}
       </div>
 
-      {/* Search */}
-      <div className="max-w-md mx-auto mb-10">
+      {/* Search + sort */}
+      <div className="max-w-md mx-auto mb-10 space-y-3">
         <input
           type="text"
           placeholder="Search cities..."
@@ -71,6 +92,36 @@ export function CitiesIndex({ cities, nationalBpi = null }: CitiesIndexProps) {
           onChange={(e) => setSearch(e.target.value)}
           className="w-full px-5 py-3 rounded-2xl border border-gray-200 dark:border-grill-lighter bg-white dark:bg-grill-light text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ketchup/30 dark:focus:ring-mustard/30 text-sm"
         />
+        <div
+          className="flex items-center justify-center gap-1 p-1 rounded-2xl border border-gray-200 dark:border-grill-lighter bg-white dark:bg-grill-light"
+          role="group"
+          aria-label="Sort cities by BPI"
+        >
+          <button
+            type="button"
+            onClick={() => setSort("cheap")}
+            aria-pressed={sort === "cheap"}
+            className={`flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+              sort === "cheap"
+                ? "bg-ketchup/10 dark:bg-mustard/10 text-ketchup dark:text-mustard"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            }`}
+          >
+            Cheapest first
+          </button>
+          <button
+            type="button"
+            onClick={() => setSort("pricey")}
+            aria-pressed={sort === "pricey"}
+            className={`flex-1 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+              sort === "pricey"
+                ? "bg-ketchup/10 dark:bg-mustard/10 text-ketchup dark:text-mustard"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            }`}
+          >
+            Priciest first
+          </button>
+        </div>
       </div>
 
       {/* Grid */}
@@ -82,13 +133,8 @@ export function CitiesIndex({ cities, nationalBpi = null }: CitiesIndexProps) {
             const bpi = item.currentSnapshot?.bpi_score ?? null;
             const change = item.currentSnapshot?.change_pct ?? null;
             const globalRank =
-              cities
+              rankedByPrice
                 .filter((c) => c.currentSnapshot)
-                .sort(
-                  (a, b) =>
-                    (b.currentSnapshot?.bpi_score ?? 0) -
-                    (a.currentSnapshot?.bpi_score ?? 0),
-                )
                 .findIndex((c) => c.city.slug === item.city.slug) + 1;
             const vsNational = vsNationalPct(bpi, nationalBpi);
 
