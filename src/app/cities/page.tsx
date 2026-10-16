@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { getAllCities, getNationalBpiHistory } from "@/lib/data";
 import { CitiesIndex } from "@/components/cities-index";
 import { Header } from "@/components/header";
@@ -52,7 +53,7 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: "How is the city grid ordered?",
-    a: "Default is priciest first (highest current-week BPI), matching the rankings table. Use the Cheapest first / Priciest first toggle above the grid to flip it. Cities without a print yet sink to the bottom either way.",
+    a: "Default is priciest first (highest current-week BPI), matching the rankings table. Use the Cheapest first / Priciest first toggle above the grid to flip it — the choice sticks in the URL (?sort=cheap or ?sort=pricey) so shared links and reloads keep your sort. Cities without a print yet sink to the bottom either way.",
   },
   {
     q: "What does each city card show?",
@@ -148,7 +149,20 @@ function buildJsonLd(
   return [webpage, itemList, faqPage, breadcrumb];
 }
 
-export default async function CitiesPage() {
+function parseSortParam(
+  raw: string | string[] | undefined,
+): "pricey" | "cheap" {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  return v === "cheap" ? "cheap" : "pricey";
+}
+
+export default async function CitiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const initialSort = parseSortParam(params.sort);
   const cities = await getAllCities();
   const ranked = rankCities(cities);
   const nationalHistory = getNationalBpiHistory(cities);
@@ -217,14 +231,17 @@ export default async function CitiesPage() {
             />
           </section>
         )}
-        <CitiesIndex
-          cities={cities}
-          nationalBpi={
-            nationalCurrent && nationalCurrent.week_of === weekOf
-              ? nationalCurrent.avg_bpi
-              : null
-          }
-        />
+        <Suspense fallback={null}>
+          <CitiesIndex
+            cities={cities}
+            initialSort={initialSort}
+            nationalBpi={
+              nationalCurrent && nationalCurrent.week_of === weekOf
+                ? nationalCurrent.avg_bpi
+                : null
+            }
+          />
+        </Suspense>
 
         {/* FAQ */}
         <section className="max-w-7xl mx-auto px-6 py-10">
