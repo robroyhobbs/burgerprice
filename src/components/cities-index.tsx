@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { CityDashboardData } from "@/lib/types";
 import { vsNationalPct } from "@/lib/bpi";
@@ -14,13 +14,41 @@ interface CitiesIndexProps {
   cities: CityDashboardData[];
   /** Current-week national BPI (avg across tracked cities). */
   nationalBpi?: number | null;
+  /** SSR-parsed sort from ?sort= — used until searchParams hydrate. */
+  initialSort?: SortMode;
 }
 
-export function CitiesIndex({ cities, nationalBpi = null }: CitiesIndexProps) {
+function parseSort(raw: string | null | undefined): SortMode {
+  return raw === "cheap" ? "cheap" : "pricey";
+}
+
+export function CitiesIndex({
+  cities,
+  nationalBpi = null,
+  initialSort = "pricey",
+}: CitiesIndexProps) {
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortMode>("pricey");
   const [nearestInfo, setNearestInfo] = useState<NearMeResult | null>(null);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
+
+  // URL is source of truth; fall back to SSR initialSort when param absent.
+  const sortParam = searchParams.get("sort");
+  const sort: SortMode =
+    sortParam !== null ? parseSort(sortParam) : initialSort;
+
+  function setSort(mode: SortMode) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (mode === "pricey") {
+      // Default: clean URL (no query). ?sort=pricey also accepted on load.
+      params.delete("sort");
+    } else {
+      params.set("sort", "cheap");
+    }
+    const q = params.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }
 
   // Rank # is always priciest-first among cities with a print.
   const rankedByPrice = useMemo(() => {
