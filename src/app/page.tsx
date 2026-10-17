@@ -32,14 +32,24 @@ export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
 interface HomeProps {
-  searchParams: Promise<{ showdown?: string }>;
+  searchParams: Promise<{
+    showdown?: string | string[];
+    left?: string | string[];
+    right?: string | string[];
+  }>;
+}
+
+function firstParam(v: string | string[] | undefined): string | null {
+  if (typeof v === "string") return v;
+  if (Array.isArray(v) && typeof v[0] === "string") return v[0];
+  return null;
 }
 
 export async function generateMetadata({
   searchParams,
 }: HomeProps): Promise<Metadata> {
   const sp = await searchParams;
-  const raw = sp.showdown;
+  const raw = firstParam(sp.showdown);
   // Always declare apex homepage as canonical (fixes GSC duplicate www/apex).
   const canonical = "/";
   if (raw == null || raw === "") {
@@ -102,8 +112,13 @@ export async function generateMetadata({
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  // searchParams reserved for showdown OG share URLs (?showdown=1|slug,slug)
-  await searchParams;
+  // ?showdown=slug,slug (or ?left=&right=) renders that pair; otherwise weekly rotation.
+  const sp = await searchParams;
+  const requestedPair = parseShowdownPair(
+    firstParam(sp.showdown),
+    firstParam(sp.left),
+    firstParam(sp.right),
+  );
 
   const [data, purchasingPower] = await Promise.all([
     getDashboardData(),
@@ -139,9 +154,20 @@ export default async function Home({ searchParams }: HomeProps) {
         100
       : null;
 
-  // Pick 2 showdown cities based on current week (deterministic rotation)
+  // Pick 2 showdown cities: shared pair from the URL when both are valid,
+  // otherwise the deterministic weekly rotation.
   const [idx1, idx2] = getShowdownIndices(data.weekOf, data.cities.length);
-  const showdownCities = [data.cities[idx1], data.cities[idx2]].filter(Boolean);
+  const weeklyShowdown = [data.cities[idx1], data.cities[idx2]].filter(Boolean);
+  const findPrinted = (slug: string) =>
+    data.cities.find(
+      (c) => c.city.slug === slug && c.currentSnapshot?.bpi_score != null,
+    );
+  const requestedLeft = requestedPair ? findPrinted(requestedPair[0]) : undefined;
+  const requestedRight = requestedPair ? findPrinted(requestedPair[1]) : undefined;
+  const showdownCities =
+    requestedLeft && requestedRight && requestedLeft !== requestedRight
+      ? [requestedLeft, requestedRight]
+      : weeklyShowdown;
 
   // For the trend chart, show the showdown pair
   const trendCities =
