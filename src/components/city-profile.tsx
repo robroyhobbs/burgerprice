@@ -409,6 +409,20 @@ export function CityProfile({
               </Link>
             ))}
           </div>
+          <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
+            Head-to-head:{" "}
+            {peerCities.map((peer, i) => (
+              <span key={peer.slug}>
+                {i > 0 && " · "}
+                <Link
+                  href={`/?showdown=${encodeURIComponent(`${city.slug},${peer.slug}`)}#city-showdown`}
+                  className="text-ketchup dark:text-mustard hover:underline"
+                >
+                  {city.name} vs {peer.name}
+                </Link>
+              </span>
+            ))}
+          </p>
         </div>
       )}
 
