@@ -164,10 +164,17 @@ export default async function Home({ searchParams }: HomeProps) {
     );
   const requestedLeft = requestedPair ? findPrinted(requestedPair[0]) : undefined;
   const requestedRight = requestedPair ? findPrinted(requestedPair[1]) : undefined;
+  const isCustomShowdown = Boolean(
+    requestedLeft && requestedRight && requestedLeft !== requestedRight,
+  );
   const showdownCities =
-    requestedLeft && requestedRight && requestedLeft !== requestedRight
+    isCustomShowdown && requestedLeft && requestedRight
       ? [requestedLeft, requestedRight]
       : weeklyShowdown;
+  const pickerCities = data.cities
+    .filter((c) => c.currentSnapshot?.bpi_score != null)
+    .map((c) => ({ slug: c.city.slug, name: c.city.name, state: c.city.state }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // For the trend chart, show the showdown pair
   const trendCities =
@@ -232,7 +239,12 @@ export default async function Home({ searchParams }: HomeProps) {
           cheapestCity={cheapestCity}
           mostExpensiveCity={mostExpensiveCity}
         />
-        <CityShowdown cities={showdownCities} weekOf={data.weekOf} />
+        <CityShowdown
+          cities={showdownCities}
+          weekOf={data.weekOf}
+          pickerCities={pickerCities}
+          isCustom={isCustomShowdown}
+        />
 
         {/* Showdown FAQ — mirrors FAQPage JSON-LD */}
         {showdownFaqItems.length > 0 ? (

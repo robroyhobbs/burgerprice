@@ -3,10 +3,15 @@ import { BpiCard } from "./bpi-card";
 import { ShareStrip } from "./share-strip";
 import { buildShowdownCaption, showdownShareUrl } from "@/lib/share";
 import { isFreshShowdownWeek } from "@/lib/week";
+import { ShowdownPicker } from "./showdown-picker";
 
 interface CityShowdownProps {
   cities: CityDashboardData[];
   weekOf?: string;
+  /** All tracked cities with a current print, for the matchup picker. */
+  pickerCities?: { slug: string; name: string; state: string }[];
+  /** True when the pair came from a shared link rather than the weekly rotation. */
+  isCustom?: boolean;
 }
 
 function formatWeekLabel(weekOf: string): string {
@@ -38,7 +43,12 @@ function showdownTagline(
   return `${leader} leads by ${gapText}. ${underdog} is the value trade this week.`;
 }
 
-export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
+export function CityShowdown({
+  cities,
+  weekOf,
+  pickerCities,
+  isCustom = false,
+}: CityShowdownProps) {
   if (cities.length < 2) return null;
 
   const [city1, city2] = cities;
@@ -67,7 +77,7 @@ export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
       <div className="text-center mb-12">
         <p className="text-xs uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500 mb-3 font-medium inline-flex items-center justify-center gap-2 flex-wrap">
           <span>
-            Weekly Showdown
+            {isCustom ? "Custom Showdown" : "Weekly Showdown"}
             {weekLabel ? ` · Week of ${weekLabel}` : ""}
           </span>
           {fresh ? (
@@ -102,6 +112,16 @@ export function CityShowdown({ cities, weekOf }: CityShowdownProps) {
 
         <BpiCard data={city2} isWinner={!isTie && bpi2 > bpi1} />
       </div>
+
+      {pickerCities && pickerCities.length >= 2 ? (
+        <ShowdownPicker
+          key={`${city1.city.slug},${city2.city.slug}`}
+          cities={pickerCities}
+          leftSlug={city1.city.slug}
+          rightSlug={city2.city.slug}
+          isCustom={isCustom}
+        />
+      ) : null}
 
       <ShareStrip
         shareUrl={shareUrl}
