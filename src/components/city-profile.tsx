@@ -21,6 +21,7 @@ import Link from "next/link";
 import { ShareStrip } from "./share-strip";
 import { Breadcrumbs } from "./breadcrumbs";
 import { buildCityCaption, cityShareUrl } from "@/lib/share";
+import { buildSameStoreCheck, buildSameStoreStory } from "@/lib/same-store";
 
 export interface PeerCity {
   name: string;
@@ -84,6 +85,20 @@ export function CityProfile({
   const tapeStory = buildTapeStory(city.name, tapePrints);
 
   const tierSummary = summarizePriceTiers(rawPrices);
+
+  const sameStore = buildSameStoreCheck(
+    rawPrices,
+    (data.previousSnapshot?.raw_prices ?? []) as RawPrice[],
+  );
+  const sameStoreStory = sameStore
+    ? buildSameStoreStory(city.name, sameStore, change)
+    : null;
+  const prevWeekLabel = data.previousSnapshot
+    ? formatTapeWeek(data.previousSnapshot.week_of)
+    : null;
+  const curWeekLabel = currentSnapshot
+    ? formatTapeWeek(currentSnapshot.week_of)
+    : null;
 
   const wage = getMinimumWage(city.slug);
   const burgersPerHour =
@@ -262,6 +277,104 @@ export function CityProfile({
               {tapeStory}
             </p>
           )}
+        </div>
+      )}
+
+      {/* SAME-STORE CHECK — carried-over restaurants only, separates price moves from basket mix */}
+      {sameStore && sameStoreStory && (
+        <div
+          id="same-store"
+          className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-6 mb-8 scroll-mt-24"
+        >
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-ketchup dark:text-mustard">
+              Same-Store Check
+            </span>
+            <span className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">
+              {prevWeekLabel} → {curWeekLabel}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 mb-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">
+                Headline WoW
+              </div>
+              <div className="mt-0.5">
+                <TrendArrow change={change} size="sm" />
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">
+                Same-store avg
+              </div>
+              <div className="mt-0.5">
+                {sameStore.avgChangePct == null ? (
+                  <span className="text-sm text-gray-400">n/a</span>
+                ) : (
+                  <TrendArrow change={sameStore.avgChangePct} size="sm" />
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">
+                Basket
+              </div>
+              <div className="mt-0.5 text-sm text-gray-700 dark:text-gray-300">
+                {sameStore.rows.length} carried · {sameStore.newCount} new ·{" "}
+                {sameStore.droppedCount} out
+              </div>
+            </div>
+          </div>
+          <p className="text-sm md:text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
+            {sameStoreStory}
+          </p>
+          {sameStore.rows.length > 0 && (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wider text-gray-400 text-left">
+                    <th className="py-2 pr-4 font-medium">Restaurant</th>
+                    <th className="py-2 pr-4 font-medium text-right">{prevWeekLabel}</th>
+                    <th className="py-2 pr-4 font-medium text-right">{curWeekLabel}</th>
+                    <th className="py-2 font-medium text-right">Move</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sameStore.rows.map((row) => (
+                    <tr
+                      key={row.restaurant}
+                      className="border-t border-gray-100 dark:border-grill-lighter"
+                    >
+                      <td className="py-2 pr-4">
+                        <div className="text-gray-900 dark:text-white">{row.restaurant}</div>
+                        <div className="text-xs text-gray-400">
+                          {row.burger}
+                          {row.previousBurger ? ` (was ${row.previousBurger})` : ""}
+                        </div>
+                      </td>
+                      <td className="py-2 pr-4 text-right bpi-number text-gray-500 dark:text-gray-400">
+                        ${row.previous.toFixed(2)}
+                      </td>
+                      <td className="py-2 pr-4 text-right bpi-number text-gray-900 dark:text-white">
+                        ${row.current.toFixed(2)}
+                      </td>
+                      <td className="py-2 text-right">
+                        <TrendArrow change={row.changePct} size="sm" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-gray-400">
+            Same-store compares only restaurants priced both weeks. The headline BPI is
+            tier-weighted across the full weekly sample.{" "}
+            <Link href="/about#methodology" className="text-ketchup dark:text-mustard hover:underline">
+              How we print
+            </Link>
+            .
+          </p>
         </div>
       )}
 
