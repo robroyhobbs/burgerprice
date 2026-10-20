@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Leaderboard } from "@/components/leaderboard";
 import { BiggestMovers } from "@/components/biggest-movers";
+import { SameStoreBoard } from "@/components/same-store-board";
 import { ShareStrip } from "@/components/share-strip";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
@@ -57,6 +58,10 @@ const FAQ_ITEMS = [
   {
     q: "What does WoW mean?",
     a: "Week-over-week change in BPI. Green (down) means burgers got cheaper; red (up) means they got pricier. Flat weeks show a dash.",
+  },
+  {
+    q: "Is a big weekly move a real price change?",
+    a: "Not always. The weekly basket can swap restaurants in and out, so the Same-Store Board compares each city's headline WoW with the average move at restaurants priced both weeks. A gap of 5 points or more means the swing is mostly basket mix, not menu boards.",
   },
   {
     q: "How often does the leaderboard update?",
@@ -332,6 +337,8 @@ export default async function RankingsPage() {
         )}
 
         <BiggestMovers cities={cities} />
+
+        <SameStoreBoard cities={cities} />
 
         {tierBoards.length > 0 && (
           <section
