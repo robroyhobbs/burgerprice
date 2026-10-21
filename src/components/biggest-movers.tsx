@@ -1,10 +1,31 @@
 import Link from "next/link";
-import type { CityDashboardData } from "@/lib/types";
+import type { CityDashboardData, RawPrice } from "@/lib/types";
+import { buildSameStoreCheck } from "@/lib/same-store";
+
+/** Headline-vs-same-store gap (pct points) that reads as basket mix; matches city pages. */
+const MIX_GAP = 5;
 
 export type MoverCity = CityDashboardData & {
   bpi: number | null;
   change: number | null;
+  /** Avg move at restaurants priced both weeks; null when no carried-over spots. */
+  sameStore: number | null;
+  carried: number;
 };
+
+function sameStoreFor(c: CityDashboardData): { sameStore: number | null; carried: number } {
+  if (!c.currentSnapshot || !c.previousSnapshot) return { sameStore: null, carried: 0 };
+  const check = buildSameStoreCheck(
+    (c.currentSnapshot.raw_prices ?? []) as RawPrice[],
+    (c.previousSnapshot.raw_prices ?? []) as RawPrice[],
+  );
+  return { sameStore: check?.avgChangePct ?? null, carried: check?.rows.length ?? 0 };
+}
+
+function signedPct(pct: number): string {
+  if (pct === 0) return "flat";
+  return `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+}
 
 interface BiggestMoversProps {
   cities: CityDashboardData[];
@@ -27,6 +48,7 @@ export function BiggestMovers({
     ...c,
     bpi: c.currentSnapshot?.bpi_score ?? null,
     change: c.currentSnapshot?.change_pct ?? null,
+    ...sameStoreFor(c),
   }));
 
   const withChange = ranked.filter(
@@ -57,7 +79,7 @@ export function BiggestMovers({
               Biggest Movers
             </h2>
             <p className="text-xs text-gray-400 mt-1">
-              Week-over-week BPI swings
+              Week-over-week BPI swings, with the same-store read
             </p>
           </div>
         </div>
@@ -112,6 +134,10 @@ function MoverColumn({
       ) : (
         items.map((item) => {
           const isUp = (item.change ?? 0) > 0;
+          const isMix =
+            item.change != null &&
+            item.sameStore != null &&
+            Math.abs(item.change - item.sameStore) >= MIX_GAP;
           return (
             <Link
               key={item.city.slug}
@@ -126,6 +152,22 @@ function MoverColumn({
                 <p className="bpi-number text-xs text-gray-400 mt-0.5">
                   {item.bpi != null ? `$${item.bpi.toFixed(2)}` : "—"}
                 </p>
+                {item.sameStore != null && (
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                    Same-store{" "}
+                    <span className="bpi-number">{signedPct(item.sameStore)}</span>
+                    {" · "}
+                    <span
+                      className={
+                        isMix
+                          ? "font-semibold text-amber-700 dark:text-mustard"
+                          : "font-semibold text-gray-700 dark:text-gray-200"
+                      }
+                    >
+                      {isMix ? "Basket mix" : "Real move"}
+                    </span>
+                  </p>
+                )}
               </div>
               <span
                 className={`bpi-number text-sm font-bold ${
