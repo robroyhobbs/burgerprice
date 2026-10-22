@@ -1,10 +1,76 @@
-import type { MarketReport as MarketReportType } from "@/lib/types";
+import Link from "next/link";
+import type { CityDashboardData, MarketReport as MarketReportType } from "@/lib/types";
+import { buildSameStoreBoard } from "@/components/same-store-board";
+
+/** Headline-vs-same-store gap (pct points) that reads as basket mix; matches city pages. */
+const MIX_GAP = 5;
 
 interface MarketReportProps {
   report: MarketReportType | null;
+  /** When passed, the report gets a same-store footnote so readers can discount basket-mix swings. */
+  cities?: CityDashboardData[];
 }
 
-export function MarketReport({ report }: MarketReportProps) {
+function signedPct(pct: number): string {
+  if (pct === 0) return "flat";
+  return `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+}
+
+function SameStoreFootnote({ cities }: { cities: CityDashboardData[] }) {
+  const rows = buildSameStoreBoard(cities).filter(
+    (r) => r.headline != null && r.sameStore != null,
+  );
+  if (rows.length === 0) return null;
+  const mix = rows.filter((r) => (r.gap ?? 0) >= MIX_GAP);
+  const avgSame =
+    Math.round((rows.reduce((s, r) => s + (r.sameStore ?? 0), 0) / rows.length) * 10) / 10;
+  const avgHeadline =
+    Math.round((rows.reduce((s, r) => s + (r.headline ?? 0), 0) / rows.length) * 10) / 10;
+  const biggest = mix[0];
+
+  return (
+    <div className="px-8 md:px-10 pb-8">
+      <div className="rounded-2xl border border-mustard/30 bg-mustard/5 dark:bg-mustard/10 p-5">
+        <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-gray-500 dark:text-gray-400 mb-2">
+          🧾 Same-store footnote
+        </p>
+        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+          {mix.length === 0
+            ? `Every headline move this week tracks the restaurants priced both weeks. The menu boards did the moving.`
+            : `${mix.length} of ${rows.length} city headline moves this week are mostly basket mix, not menu-board changes.`}{" "}
+          Across carried-over spots, burgers moved{" "}
+          <span className="bpi-number font-semibold">{signedPct(avgSame)}</span> on
+          average per city, vs. a{" "}
+          <span className="bpi-number font-semibold">{signedPct(avgHeadline)}</span>{" "}
+          average headline.
+          {biggest && biggest.headline != null && biggest.sameStore != null && (
+            <>
+              {" "}
+              Biggest footnote:{" "}
+              <Link
+                href={`/cities/${biggest.slug}#same-store`}
+                className="text-ketchup dark:text-mustard hover:underline"
+              >
+                {biggest.name}
+              </Link>
+              , headline{" "}
+              <span className="bpi-number">{signedPct(biggest.headline)}</span>, same-store{" "}
+              <span className="bpi-number">{signedPct(biggest.sameStore)}</span>.
+            </>
+          )}{" "}
+          <Link
+            href="/rankings#same-store-board"
+            className="text-ketchup dark:text-mustard hover:underline whitespace-nowrap"
+          >
+            See the Same-Store Board →
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function MarketReport({ report, cities }: MarketReportProps) {
   if (!report) return null;
 
   return (
@@ -42,6 +108,8 @@ export function MarketReport({ report }: MarketReportProps) {
             ))}
           </div>
         </div>
+
+        {cities && cities.length > 0 && <SameStoreFootnote cities={cities} />}
 
         {/* Market Factors */}
         {report.factors.length > 0 && (
