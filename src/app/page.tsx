@@ -327,7 +327,7 @@ export default async function Home({ searchParams }: HomeProps) {
           }
         />
         <CandlestickChart cities={trendCities} />
-        <MarketReport report={data.latestReport} />
+        <MarketReport report={data.latestReport} cities={data.cities} />
         <IndustryNews news={data.news} />
         <TheSpread
           cheapest={spread.cheapest}
