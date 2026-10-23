@@ -10,6 +10,7 @@ import { NewsletterEdition } from "@/components/newsletter-edition";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
 import { EditionNav } from "@/components/edition-nav";
+import { buildWeekSameStoreReads } from "@/lib/same-store";
 import {
   buildNewsletterCaption,
   newsletterOgPath,
@@ -113,6 +114,7 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
     },
   ];
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
+  const sameStore = Object.fromEntries(buildWeekSameStoreReads(cities, weekKey));
 
   // editions are sorted newest first; neighbors by week_of key.
   const editionKeys = editions.map((e) => ({
@@ -156,6 +158,7 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
             weekOf={newsletter.week_of}
             headline={newsletter.headline}
             sections={newsletter.sections}
+            sameStore={sameStore}
           />
 
           <div className="max-w-4xl mx-auto">
