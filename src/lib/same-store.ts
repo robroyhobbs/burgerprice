@@ -131,3 +131,62 @@ export function buildSameStoreStory(
   }
   return `${lead} That tracks the headline ${signed(headlineChangePct)}, so this one's real price action (${mix}).`;
 }
+
+/** Headline-vs-same-store gap (pct points) that reads as basket mix. */
+export const SAME_STORE_MIX_GAP = 5;
+
+export interface TapeSameStoreRead {
+  slug: string;
+  sameStore: number | null;
+  carried: number;
+  total: number;
+  /** "mix" when the headline is mostly basket turnover, "real" when menu boards moved it. */
+  read: "real" | "mix" | "new-basket" | null;
+  /** True when this week is the city's latest print, so /cities/<slug>#same-store matches it. */
+  isLatest: boolean;
+}
+
+type HistoryCity = {
+  city: { slug: string; name: string };
+  history: { week_of: string; change_pct: number | null; raw_prices: PriceLike[] | null }[];
+};
+
+/** City-name key for matching newsletter tape rows ("Austin", "Austin, TX") to cities. */
+export function cityNameKey(name: string): string {
+  return name.split(",")[0].toLowerCase().replace(/[^a-z]+/g, "");
+}
+
+/**
+ * Same-store read per city for a given print week, using that week's snapshot
+ * and the one before it in history. Works for archived editions too.
+ */
+export function buildWeekSameStoreReads(
+  cities: HistoryCity[],
+  weekOf: string,
+): Map<string, TapeSameStoreRead> {
+  const out = new Map<string, TapeSameStoreRead>();
+  const week = weekOf.slice(0, 10);
+  for (const c of cities) {
+    const hist = c.history ?? [];
+    const idx = hist.findIndex((s) => String(s.week_of).slice(0, 10) === week);
+    if (idx <= 0) continue;
+    const cur = hist[idx];
+    const prev = hist[idx - 1];
+    const check = buildSameStoreCheck(cur.raw_prices ?? [], prev.raw_prices ?? []);
+    if (!check) continue;
+    const headline = cur.change_pct;
+    let read: TapeSameStoreRead["read"] = null;
+    if (check.avgChangePct == null) read = "new-basket";
+    else if (headline != null && !Number.isNaN(headline))
+      read = Math.abs(headline - check.avgChangePct) >= SAME_STORE_MIX_GAP ? "mix" : "real";
+    out.set(cityNameKey(c.city.name), {
+      slug: c.city.slug,
+      sameStore: check.avgChangePct,
+      carried: check.rows.length,
+      total: check.currentCount,
+      read,
+      isLatest: idx === hist.length - 1,
+    });
+  }
+  return out;
+}

@@ -1,12 +1,58 @@
 "use client";
 
 import type { NewsletterContent } from "@/lib/types";
+import type { TapeSameStoreRead } from "@/lib/same-store";
 import Link from "next/link";
 
 interface NewsletterEditionProps {
   weekOf: string;
   headline: string;
   sections: NewsletterContent;
+  /** Same-store read per tape city, keyed by cityNameKey(city). */
+  sameStore?: Record<string, TapeSameStoreRead>;
+}
+
+function tapeKey(name: string): string {
+  return name.split(",")[0].toLowerCase().replace(/[^a-z]+/g, "");
+}
+
+function signedPct(pct: number): string {
+  if (pct === 0) return "flat";
+  return `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
+}
+
+function TapeSameStoreLine({ read }: { read: TapeSameStoreRead }) {
+  const tag =
+    read.read === "mix"
+      ? { label: "BASKET MIX", cls: "text-yellow-400 border-yellow-500/40" }
+      : read.read === "real"
+        ? { label: "REAL MOVE", cls: "text-green-400 border-green-500/40" }
+        : read.read === "new-basket"
+          ? { label: "NEW BASKET", cls: "text-gray-400 border-gray-500/40" }
+          : null;
+  const body =
+    read.sameStore == null
+      ? `same-store: no carried-over spots (0/${read.total})`
+      : `same-store ${signedPct(read.sameStore)} (${read.carried}/${read.total} spots priced both weeks)`;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-gray-500 mt-1">
+      {tag && (
+        <span className={`border rounded px-1.5 py-0.5 tracking-widest ${tag.cls}`}>
+          {tag.label}
+        </span>
+      )}
+      {read.isLatest ? (
+        <Link
+          href={`/cities/${read.slug}#same-store`}
+          className="hover:text-green-400 underline decoration-dotted"
+        >
+          {body}
+        </Link>
+      ) : (
+        <span>{body}</span>
+      )}
+    </div>
+  );
 }
 
 function formatDate(dateStr: string): string {
@@ -23,7 +69,12 @@ export function NewsletterEdition({
   weekOf,
   headline,
   sections,
+  sameStore,
 }: NewsletterEditionProps) {
+  const tapeReads = sameStore
+    ? sections.theTape.map((m) => sameStore[tapeKey(m.city)]).filter(Boolean)
+    : [];
+  const mixCount = tapeReads.filter((r) => r.read === "mix").length;
   return (
     <article className="max-w-4xl mx-auto">
       {/* Terminal Header */}
@@ -70,10 +121,25 @@ export function NewsletterEdition({
               <span className="text-gray-200 font-bold min-w-[8rem]">
                 {mover.city}
               </span>
-              <span className="text-gray-400">{mover.commentary}</span>
+              <div className="flex-1">
+                <span className="text-gray-400">{mover.commentary}</span>
+                {sameStore?.[tapeKey(mover.city)] && (
+                  <TapeSameStoreLine read={sameStore[tapeKey(mover.city)]} />
+                )}
+              </div>
             </div>
           ))}
         </div>
+        {tapeReads.length > 0 && (
+          <p className="mt-4 text-[11px] font-mono text-green-500/60 leading-relaxed">
+            🧾 Same-store footnote: {mixCount} of {tapeReads.length} tape moves this
+            week are mostly basket mix (a 5-pt+ gap between the headline and the
+            restaurants priced both weeks).{" "}
+            <Link href="/rankings#same-store-board" className="underline hover:text-green-400">
+              See the Same-Store Board →
+            </Link>
+          </p>
+        )}
       </Section>
 
       {/* City Spotlight */}

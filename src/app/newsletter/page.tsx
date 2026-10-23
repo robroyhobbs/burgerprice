@@ -6,6 +6,7 @@ import { getAllCities } from "@/lib/data";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { NewsletterEdition } from "@/components/newsletter-edition";
+import { buildWeekSameStoreReads } from "@/lib/same-store";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
 import {
@@ -183,6 +184,9 @@ export default async function NewsletterPage() {
             weekOf={latest.week_of}
             headline={latest.headline}
             sections={latest.sections}
+            sameStore={Object.fromEntries(
+              buildWeekSameStoreReads(cities, String(latest.week_of).slice(0, 10)),
+            )}
           />
 
           <div className="max-w-4xl mx-auto">
