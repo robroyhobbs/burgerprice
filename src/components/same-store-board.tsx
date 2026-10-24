@@ -158,7 +158,11 @@ export function SameStoreBoard({ cities }: { cities: CityDashboardData[] }) {
         </table>
       </div>
       <p className="text-xs text-gray-400 mt-3">
-        Same-store is the average per-restaurant price change across spots on both weeks&apos; tape. A gap of {MIX_GAP}+ points from the headline reads as basket mix. Tap a city for the restaurant-by-restaurant table.
+        Same-store is the average per-restaurant price change across spots on both weeks&apos; tape. A gap of {MIX_GAP}+ points from the headline reads as basket mix. Tap a city for the restaurant-by-restaurant table, or read{" "}
+        <Link href="/about#same-store" className="text-ketchup dark:text-mustard hover:underline">
+          how the same-store check works
+        </Link>
+        .
       </p>
     </section>
   );

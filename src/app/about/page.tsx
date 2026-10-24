@@ -67,6 +67,14 @@ const FAQ_ITEMS = [
     a: "Outliers below $1 or above $50. That keeps kids’-menu oddities and tasting-menu curiosities from warping the index.",
   },
   {
+    q: "What does “Basket mix” vs “Real move” mean?",
+    a: "Each week we also run a same-store check: only restaurants priced on both weeks’ tape, matched by name, averaged per spot. If that same-store average lands within 5 percentage points of the city’s headline week-over-week move, we call it a Real move. If the gap is 5 points or more, the headline mostly came from which spots were sampled, so we tag it Basket mix. New basket means no spot carried over, so there is nothing to compare.",
+  },
+  {
+    q: "Why can a city’s headline move differ from same-store?",
+    a: "The sample rotates. When a pricier gourmet spot joins the tape or a cheap diner rolls off, the headline BPI can jump even if no menu board changed. Same-store strips that out and shows what restaurants that stayed actually charged.",
+  },
+  {
     q: "How is the national average calculated?",
     a: "Simple average of each city’s BPI for that week — equal weight per city with data, not population-weighted. City count can vary if a market is still collecting.",
   },
@@ -194,6 +202,41 @@ export default async function AboutPage() {
               The BPI is a <em>weighted average</em> of these segments. We weight
               casual and premium more heavily because they reflect the local dining
               economy, while fast-food prices are largely set nationally.
+            </p>
+
+            <h2 id="same-store" className="font-headline text-xl text-gray-900 dark:text-white">Same-Store Check</h2>
+            <p>
+              A city&apos;s headline week-over-week move compares this week&apos;s
+              basket to last week&apos;s. The basket rotates, so part of any move can
+              come from which restaurants were sampled rather than from menu prices.
+            </p>
+            <p>
+              The same-store check isolates the menu-board part. We match
+              restaurants that appear on both weeks&apos; tape, take each one&apos;s
+              price change, and average them. Then we compare that number to the
+              headline:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                <strong>Real move:</strong> same-store lands within 5 percentage
+                points of the headline. Prices actually moved.
+              </li>
+              <li>
+                <strong>Basket mix:</strong> the gap is 5 points or more. The sample
+                moved more than the menus did.
+              </li>
+              <li>
+                <strong>New basket:</strong> no restaurant carried over, so
+                there&apos;s no same-store read that week.
+              </li>
+            </ul>
+            <p>
+              You&apos;ll see the read on the{" "}
+              <Link href="/rankings#same-store-board" className="text-ketchup dark:text-mustard hover:underline">
+                Same-Store Board
+              </Link>
+              , in Biggest Movers, in each newsletter&apos;s tape, and in the
+              restaurant-by-restaurant table on every city page.
             </p>
 
             <h2 id="data-sources" className="font-headline text-xl text-gray-900 dark:text-white">Data Sources</h2>
