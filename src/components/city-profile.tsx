@@ -11,6 +11,8 @@ import { getMinimumWage } from "@/lib/wages";
 import {
   buildCityRead,
   buildTapeStory,
+  buildTradingRange,
+  buildTradingRangeStory,
   formatTapeWeek,
   sliceRecentTape,
 } from "@/lib/city-readout";
@@ -83,6 +85,11 @@ export function CityProfile({
   // Reuse the same ascending history the candlestick chart already charts.
   const tapePrints = sliceRecentTape(data.history, 5);
   const tapeStory = buildTapeStory(city.name, tapePrints);
+
+  const tradingRange = buildTradingRange(data.history);
+  const tradingRangeStory = tradingRange
+    ? buildTradingRangeStory(city.name, tradingRange)
+    : null;
 
   const tierSummary = summarizePriceTiers(rawPrices);
 
@@ -276,6 +283,52 @@ export function CityProfile({
             <p className="mt-4 text-sm md:text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
               {tapeStory}
             </p>
+          )}
+          {tradingRange && tradingRangeStory && (
+            <div
+              id="trading-range"
+              className="mt-5 pt-4 border-t border-gray-100 dark:border-grill-lighter scroll-mt-24"
+            >
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-500 dark:text-gray-400">
+                  Trading Range
+                </span>
+                <span className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">
+                  {tradingRange.weeks} weeks tracked
+                </span>
+              </div>
+              <div className="flex items-end justify-between gap-3 text-xs">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400">
+                    Low &middot; {formatTapeWeek(tradingRange.low.weekOf)}
+                  </div>
+                  <div className="bpi-number text-base font-bold text-lettuce dark:text-lettuce-light">
+                    ${tradingRange.low.bpi.toFixed(2)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400">
+                    High &middot; {formatTapeWeek(tradingRange.high.weekOf)}
+                  </div>
+                  <div className="bpi-number text-base font-bold text-negative dark:text-red-400">
+                    ${tradingRange.high.bpi.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+              <div
+                className="relative mt-2 h-2 rounded-full bg-gradient-to-r from-lettuce/30 via-gray-200 to-negative/30 dark:via-grill-lighter"
+                role="img"
+                aria-label={`Latest $${tradingRange.last.bpi.toFixed(2)} within a range of $${tradingRange.low.bpi.toFixed(2)} to $${tradingRange.high.bpi.toFixed(2)}`}
+              >
+                <span
+                  className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 border-white dark:border-grill bg-ketchup dark:bg-mustard shadow"
+                  style={{ left: `${Math.min(100, Math.max(0, tradingRange.position * 100))}%` }}
+                />
+              </div>
+              <p className="mt-3 text-sm md:text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                {tradingRangeStory}
+              </p>
+            </div>
           )}
         </div>
       )}
