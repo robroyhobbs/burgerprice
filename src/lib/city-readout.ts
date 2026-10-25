@@ -137,3 +137,78 @@ export function formatTapeWeek(weekOf: string): string {
   if (Number.isNaN(d.getTime())) return weekOf;
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
+/** Full-history trading range for a city (Bloomberg-style 52-week range). */
+export interface TradingRange {
+  low: { weekOf: string; bpi: number };
+  high: { weekOf: string; bpi: number };
+  last: { weekOf: string; bpi: number };
+  firstWeekOf: string;
+  weeks: number;
+  /** 0 = at the low, 1 = at the high. */
+  position: number;
+  /** % the latest print sits below the high (>= 0). */
+  offHighPct: number;
+  /** % the latest print sits above the low (>= 0). */
+  offLowPct: number;
+}
+
+/**
+ * Low / high / current across every tracked week. Ties resolve to the most
+ * recent week so "fresh high" reads correctly. Needs 3+ valid prints.
+ */
+export function buildTradingRange(
+  history: SnapshotLike[],
+): TradingRange | null {
+  const prints = (history ?? []).filter(
+    (s) => Number.isFinite(s.bpi_score) && s.bpi_score > 0,
+  );
+  if (prints.length < 3) return null;
+
+  let low = prints[0];
+  let high = prints[0];
+  for (const s of prints) {
+    if (s.bpi_score <= low.bpi_score) low = s;
+    if (s.bpi_score >= high.bpi_score) high = s;
+  }
+  const last = prints[prints.length - 1];
+  const span = high.bpi_score - low.bpi_score;
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+
+  return {
+    low: { weekOf: low.week_of, bpi: low.bpi_score },
+    high: { weekOf: high.week_of, bpi: high.bpi_score },
+    last: { weekOf: last.week_of, bpi: last.bpi_score },
+    firstWeekOf: prints[0].week_of,
+    weeks: prints.length,
+    position: span > 0 ? (last.bpi_score - low.bpi_score) / span : 0.5,
+    offHighPct: round1(((high.bpi_score - last.bpi_score) / high.bpi_score) * 100),
+    offLowPct: round1(((last.bpi_score - low.bpi_score) / low.bpi_score) * 100),
+  };
+}
+
+/** One sentence on where the latest print sits in the full range. */
+export function buildTradingRangeStory(
+  cityName: string,
+  r: TradingRange,
+): string {
+  const lastIsHigh = r.last.weekOf === r.high.weekOf;
+  const lastIsLow = r.last.weekOf === r.low.weekOf;
+  const d = new Date(r.firstWeekOf + "T00:00:00");
+  const since = Number.isNaN(d.getTime())
+    ? r.firstWeekOf
+    : d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  if (lastIsHigh) {
+    return `${cityName} is printing its highest burger since tracking began ${since}. Record territory, and not the fun kind.`;
+  }
+  if (lastIsLow) {
+    return `${cityName} is printing its cheapest burger since tracking began ${since}. Rare good news at the window.`;
+  }
+  if (r.position >= 0.75) {
+    return `${cityName} sits ${r.offHighPct.toFixed(1)}% below its ${formatTapeWeek(r.high.weekOf)} high: near the top of its range.`;
+  }
+  if (r.position <= 0.25) {
+    return `${cityName} sits ${r.offLowPct.toFixed(1)}% above its ${formatTapeWeek(r.low.weekOf)} low: near the bottom of its range.`;
+  }
+  return `${cityName} sits mid-range: ${r.offHighPct.toFixed(1)}% off the high, ${r.offLowPct.toFixed(1)}% above the low.`;
+}
