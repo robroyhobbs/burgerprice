@@ -20,3 +20,17 @@ CREATE TABLE IF NOT EXISTS newsletter_subscribers (
 
 CREATE INDEX IF NOT EXISTS newsletter_subscribers_status_idx
   ON newsletter_subscribers (status);
+
+-- One row per (issue week, subscriber): makes the weekly send idempotent.
+CREATE TABLE IF NOT EXISTS newsletter_sends (
+  id                  BIGSERIAL PRIMARY KEY,
+  week_of             DATE NOT NULL,
+  subscriber_id       BIGINT NOT NULL REFERENCES newsletter_subscribers (id) ON DELETE CASCADE,
+  status              TEXT NOT NULL CHECK (status IN ('sending', 'sent', 'failed')),
+  provider_message_id TEXT,
+  error               TEXT,
+  attempts            INT NOT NULL DEFAULT 1,
+  attempted_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  sent_at             TIMESTAMPTZ,
+  UNIQUE (week_of, subscriber_id)
+);

@@ -65,6 +65,27 @@ jobs:
           echo "revision=${PRIOR_REV}" >> "${GITHUB_OUTPUT}"
           echo "Prior production revision (rollback target): ${PRIOR_REV:-unknown}"
 
+      - name: Newsletter config
+        id: nl
+        env:
+          SEND_ENABLED: ${{ vars.NEWSLETTER_SEND_ENABLED }}
+          RESEND_ON: ${{ vars.RESEND_SECRET_ENABLED }}
+          POSTAL: ${{ vars.NEWSLETTER_POSTAL_ADDRESS }}
+        run: |
+          set -euo pipefail
+          # Sending stays OFF unless the repo variable NEWSLETTER_SEND_ENABLED is exactly "true".
+          if [ "${SEND_ENABLED:-}" = "true" ]; then echo "send_enabled=true" >> "$GITHUB_OUTPUT"; else echo "send_enabled=false" >> "$GITHUB_OUTPUT"; fi
+          # deploy-cloudrun splits env_vars on commas; escape them in the postal address.
+          echo "postal=${POSTAL//,/\\,}" >> "$GITHUB_OUTPUT"
+          # Only mount RESEND_API_KEY once the Secret Manager secret exists (else the deploy fails).
+          {
+            echo "secrets<<EOF_SECRETS"
+            echo "DATABASE_URL=DATABASE_URL:latest"
+            echo "CRON_SECRET=CRON_SECRET:latest"
+            if [ "${RESEND_ON:-}" = "true" ]; then echo "RESEND_API_KEY=RESEND_API_KEY:latest"; fi
+            echo "EOF_SECRETS"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Deploy to Cloud Run (no traffic, canary tag)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -83,9 +104,10 @@ jobs:
             GOOGLE_CLOUD_PROJECT=gen-lang-client-0405402450
             GOOGLE_CLOUD_LOCATION=global
             GEMINI_MODEL=gemini-3.7-flash
+            NEWSLETTER_SEND_ENABLED=${{ steps.nl.outputs.send_enabled }}
+            NEWSLETTER_POSTAL_ADDRESS=${{ steps.nl.outputs.postal }}
           secrets: |-
-            DATABASE_URL=DATABASE_URL:latest
-            CRON_SECRET=CRON_SECRET:latest
+            ${{ steps.nl.outputs.secrets }}
           flags: >-
             --port=8080
             --cpu=1
