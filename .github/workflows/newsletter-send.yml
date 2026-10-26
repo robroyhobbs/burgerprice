@@ -1,0 +1,77 @@
+name: Newsletter send
+
+# Mails the latest Monday issue to confirmed subscribers, and sends any pending
+# double opt-in links. Runs after the weekly collect (Cloud Scheduler 10:00 UTC,
+# backup 14:23 UTC). Safe to re-run: each (issue, subscriber) is mailed at most once,
+# and runs past the per-run cap resume where the last one stopped.
+# Nothing is mailed unless the service has NEWSLETTER_SEND_ENABLED=true and RESEND_API_KEY;
+# otherwise the endpoint returns a dry-run count.
+on:
+  schedule:
+    - cron: "17 16 * * 1" # Monday 16:17 UTC (09:17 PT during PDT)
+    - cron: "17 16 * * 2" # Tuesday: resume anything past the daily cap / retry failures
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "issue, confirm, or all"
+        type: choice
+        options: [all, issue, confirm]
+        default: all
+      dry_run:
+        description: "Only report what would be sent"
+        type: boolean
+        default: true
+
+concurrency:
+  group: newsletter-send
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: gen-lang-client-0405402450
+  BASE: https://burgerprice.com
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Call /api/cron/newsletter
+        env:
+          GH_CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          JOB: ${{ github.event.inputs.job || 'all' }}
+          DRY: ${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          # Prefer a GitHub Actions secret; fall back to Secret Manager (needs secretAccessor on the deploy SA).
+          SECRET="${GH_CRON_SECRET:-}"
+          if [ -z "${SECRET}" ]; then
+            SECRET="$(gcloud secrets versions access latest --secret=CRON_SECRET --project="${PROJECT_ID}" 2>/dev/null || true)"
+          fi
+          if [ -z "${SECRET}" ]; then
+            echo "::warning::CRON_SECRET unavailable (no repo secret, no Secret Manager access); skipping."
+            exit 0
+          fi
+          echo "::add-mask::${SECRET}"
+          URL="${BASE}/api/cron/newsletter?job=${JOB}&dry_run=${DRY}"
+          echo "POST ${URL}"
+          HTTP="$(curl -sS -o /tmp/nl.json -w '%{http_code}' --max-time 900 -X POST \
+            -H "X-Cron-Secret: ${SECRET}" "${URL}")"
+          echo "HTTP ${HTTP}"
+          cat /tmp/nl.json; echo
+          {
+            echo "### Newsletter ${JOB} (dry_run=${DRY})"
+            echo '```json'; cat /tmp/nl.json; echo; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "${HTTP}" = "200" ]

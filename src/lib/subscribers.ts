@@ -32,6 +32,21 @@ const DDL = [
   )`,
   `CREATE INDEX IF NOT EXISTS newsletter_subscribers_status_idx
     ON newsletter_subscribers (status)`,
+  `CREATE TABLE IF NOT EXISTS newsletter_sends (
+    id                  BIGSERIAL PRIMARY KEY,
+    week_of             DATE NOT NULL,
+    subscriber_id       BIGINT NOT NULL REFERENCES newsletter_subscribers (id) ON DELETE CASCADE,
+    status              TEXT NOT NULL CHECK (status IN ('sending', 'sent', 'failed')),
+    provider_message_id TEXT,
+    error               TEXT,
+    attempts            INT NOT NULL DEFAULT 1,
+    attempted_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sent_at             TIMESTAMPTZ,
+    UNIQUE (week_of, subscriber_id)
+  )`,
+  // Smoke-test rows from deploy verification (bpi-test+...@example.com) are never real people.
+  `DELETE FROM newsletter_subscribers
+    WHERE email LIKE 'bpi-test+%@example.com'`,
 ];
 
 let ensured: Promise<void> | null = null;
@@ -184,4 +199,117 @@ export async function confirmByToken(token: string): Promise<string | null> {
     [token],
   );
   return res.rows[0]?.email ?? null;
+}
+
+export interface MailableSubscriber {
+  id: string;
+  email: string;
+  unsubscribe_token: string;
+  confirm_token: string | null;
+}
+
+/** Pending subscribers who have never been sent a confirm email. */
+export async function listPendingNeedingConfirm(
+  limit: number,
+): Promise<MailableSubscriber[]> {
+  await ensureNewsletterTables();
+  const res = await query<MailableSubscriber>(
+    `SELECT id::text AS id, email, unsubscribe_token, confirm_token
+       FROM newsletter_subscribers
+      WHERE status = 'pending' AND confirm_sent_at IS NULL AND confirm_token IS NOT NULL
+      ORDER BY created_at
+      LIMIT $1`,
+    [limit],
+  );
+  return res.rows;
+}
+
+/**
+ * Atomically claim the right to send a confirm email (at most one per hour per address).
+ * Returns false if another request already sent one recently.
+ */
+export async function claimConfirmSend(subscriberId: string): Promise<boolean> {
+  const res = await query(
+    `UPDATE newsletter_subscribers
+        SET confirm_sent_at = now(), updated_at = now()
+      WHERE id = $1::bigint AND status = 'pending'
+        AND (confirm_sent_at IS NULL OR confirm_sent_at < now() - interval '1 hour')`,
+    [subscriberId],
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
+export async function releaseConfirmSend(subscriberId: string): Promise<void> {
+  await query(
+    `UPDATE newsletter_subscribers SET confirm_sent_at = NULL WHERE id = $1::bigint`,
+    [subscriberId],
+  );
+}
+
+/** Active subscribers with no send row (or a failed one) for this issue week. */
+export async function listActiveUnsentForWeek(
+  weekOf: string,
+  limit: number,
+): Promise<MailableSubscriber[]> {
+  await ensureNewsletterTables();
+  const res = await query<MailableSubscriber>(
+    `SELECT s.id::text AS id, s.email, s.unsubscribe_token, s.confirm_token
+       FROM newsletter_subscribers s
+       LEFT JOIN newsletter_sends n
+         ON n.subscriber_id = s.id AND n.week_of = $1::date
+      WHERE s.status = 'active' AND (n.id IS NULL OR n.status = 'failed')
+      ORDER BY s.id
+      LIMIT $2`,
+    [weekOf, limit],
+  );
+  return res.rows;
+}
+
+export async function countSubscribers(): Promise<Record<SubscriberStatus, number>> {
+  await ensureNewsletterTables();
+  const res = await query<{ status: SubscriberStatus; n: string }>(
+    `SELECT status, count(*)::text AS n FROM newsletter_subscribers GROUP BY status`,
+  );
+  const out: Record<SubscriberStatus, number> = { pending: 0, active: 0, unsubscribed: 0 };
+  for (const r of res.rows) out[r.status] = Number(r.n);
+  return out;
+}
+
+/**
+ * Claim one (week, subscriber) send. Returns true only for the caller that should send.
+ * A row stuck in 'sending' (crash mid-send) is never retried automatically: better a
+ * missed email than a double one.
+ */
+export async function claimIssueSend(weekOf: string, subscriberId: string): Promise<boolean> {
+  const res = await query(
+    `INSERT INTO newsletter_sends (week_of, subscriber_id, status)
+     VALUES ($1::date, $2::bigint, 'sending')
+     ON CONFLICT (week_of, subscriber_id) DO UPDATE
+       SET status = 'sending', attempts = newsletter_sends.attempts + 1,
+           attempted_at = now(), error = NULL
+       WHERE newsletter_sends.status = 'failed' AND newsletter_sends.attempts < 3
+     RETURNING id`,
+    [weekOf, subscriberId],
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
+export async function recordIssueSend(
+  weekOf: string,
+  subscriberId: string,
+  result: { ok: true; id: string | null } | { ok: false; error: string },
+): Promise<void> {
+  if (result.ok) {
+    await query(
+      `UPDATE newsletter_sends SET status = 'sent', sent_at = now(), provider_message_id = $3
+        WHERE week_of = $1::date AND subscriber_id = $2::bigint`,
+      [weekOf, subscriberId, result.id],
+    );
+  } else {
+    await query(
+      `UPDATE newsletter_sends SET status = 'failed', error = left($3, 500)
+        WHERE week_of = $1::date AND subscriber_id = $2::bigint`,
+      [weekOf, subscriberId, result.error],
+    );
+  }
 }

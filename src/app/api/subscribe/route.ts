@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeEmail, upsertSubscriber } from "@/lib/subscribers";
+import { canSend } from "@/lib/email/provider";
+import { sendConfirmation } from "@/lib/newsletter-mailer";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +68,15 @@ export async function POST(request: NextRequest) {
         result: "already_subscribed",
         message: "You're already on the list. See you Monday.",
       });
+    }
+    // Double opt-in: mail the confirm link when sending is live. Failure here must not
+    // lose the signup; the row is stored and the cron confirm backlog retries.
+    if (canSend()) {
+      try {
+        await sendConfirmation(outcome.subscriber);
+      } catch (err) {
+        console.error("subscribe: confirm email failed:", err);
+      }
     }
     return NextResponse.json({
       status: "ok",
