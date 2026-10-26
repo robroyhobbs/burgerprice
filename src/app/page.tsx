@@ -19,6 +19,7 @@ import { TheSpread } from "@/components/the-spread";
 import { PurchasingPower } from "@/components/purchasing-power";
 import { FindYourCity } from "@/components/find-your-city";
 import { Footer } from "@/components/footer";
+import { PrintDelayNotice } from "@/components/print-delay-notice";
 import { getShowdownIndices, parseShowdownPair } from "@/lib/showdown";
 import { showdownOgPath } from "@/lib/share";
 import {
@@ -227,6 +228,7 @@ export default async function Home({ searchParams }: HomeProps) {
       ) : null}
       <Header cities={data.cities} />
       <main className="space-y-6 md:space-y-10">
+        <PrintDelayNotice weekOf={data.weekOf} />
         <NationalBpi
           history={nationalHistory}
           cheapestCity={cheapestCity}
