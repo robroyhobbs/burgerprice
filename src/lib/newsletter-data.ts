@@ -164,3 +164,49 @@ export async function getNewsletterByWeek(
 
   return null;
 }
+
+export interface NewsletterFeedItem {
+  week_of: string;
+  headline: string;
+  summary: string;
+  created_at: string;
+}
+
+/**
+ * Recent editions with a short summary (market overview), for /feed.xml.
+ */
+export async function getNewsletterFeedItems(
+  limit = 20,
+): Promise<NewsletterFeedItem[]> {
+  if (resolveDataMode() !== "database") {
+    const all = await getAllNewsletters();
+    return all.slice(0, limit).map((n) => ({
+      week_of: n.week_of,
+      headline: n.headline,
+      summary: "",
+      created_at: `${n.week_of}T12:00:00.000Z`,
+    }));
+  }
+  try {
+    const { query } = await import("./db");
+    const res = await query<Record<string, unknown>>(
+      `SELECT week_of, headline, sections, created_at
+       FROM newsletters
+       ORDER BY week_of DESC
+       LIMIT $1`,
+      [limit],
+    );
+    return res.rows.map((row) => {
+      const sections = parseSections(row.sections);
+      return {
+        week_of: dateStr(row.week_of),
+        headline: String(row.headline ?? ""),
+        summary: String(sections.marketOverview ?? ""),
+        created_at: isoTimestamp(row.created_at),
+      };
+    });
+  } catch (err) {
+    console.error("Postgres getNewsletterFeedItems failed:", err);
+    return [];
+  }
+}

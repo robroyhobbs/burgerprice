@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function NewsletterForm() {
+export function NewsletterForm({ source = "home" }: { source?: string } = {}) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -19,7 +19,7 @@ export function NewsletterForm() {
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, source }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -65,7 +65,7 @@ export function NewsletterForm() {
             <div className="bg-white/15 backdrop-blur rounded-2xl p-8 max-w-sm mx-auto border border-white/10">
               <span className="text-3xl block mb-2">🎉</span>
               <p className="text-white font-semibold text-base">{message}</p>
-              <p className="text-white/60 text-sm mt-2">Check your inbox on Monday.</p>
+              <p className="text-white/60 text-sm mt-2">One click to confirm, then the print lands Mondays.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto">

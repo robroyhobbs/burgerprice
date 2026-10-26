@@ -79,6 +79,14 @@ export default function RootLayout({
       className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${jakarta.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="Burger Price Index — Weekly Newsletter"
+          href={`${baseUrl}/feed.xml`}
+        />
+      </head>
       <body className="antialiased">
         <script
           type="application/ld+json"
