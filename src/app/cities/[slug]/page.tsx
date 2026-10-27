@@ -11,6 +11,7 @@ import {
 import { CityProfile, type PeerCity } from "@/components/city-profile";
 import { buildTierLeaderboards, cityTierStandings } from "@/lib/restaurant-utils";
 import { Header } from "@/components/header";
+import { PrintDelayNotice } from "@/components/print-delay-notice";
 import { Footer } from "@/components/footer";
 import type { Metadata } from "next";
 
@@ -142,6 +143,7 @@ export default async function CityPage({ params }: CityPageProps) {
       />
       <Header cities={allCities} />
       <main>
+        <PrintDelayNotice weekOf={snap?.week_of ?? null} />
         <CityProfile
           data={cityData}
           nationalAvg={nationalAvg}

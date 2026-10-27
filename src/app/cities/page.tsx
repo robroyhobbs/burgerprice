@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { getAllCities, getNationalBpiHistory } from "@/lib/data";
 import { CitiesIndex } from "@/components/cities-index";
 import { Header } from "@/components/header";
+import { PrintDelayNotice } from "@/components/print-delay-notice";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Footer } from "@/components/footer";
 import { ShareStrip } from "@/components/share-strip";
@@ -205,6 +206,7 @@ export default async function CitiesPage({
       ))}
       <Header cities={cities} />
       <main>
+        <PrintDelayNotice weekOf={weekOf} />
         <div className="max-w-7xl mx-auto px-6 pt-6 pb-0">
           <Breadcrumbs
             crumbs={[

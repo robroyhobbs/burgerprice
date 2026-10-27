@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getAllCities, getNationalBpiHistory } from "@/lib/data";
 import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
 import { Header } from "@/components/header";
+import { PrintDelayNotice } from "@/components/print-delay-notice";
 import { Footer } from "@/components/footer";
 import { Leaderboard } from "@/components/leaderboard";
 import { BiggestMovers } from "@/components/biggest-movers";
@@ -217,6 +218,7 @@ export default async function RankingsPage() {
       ))}
       <Header cities={cities} />
       <main>
+        <PrintDelayNotice weekOf={weekOf} />
         {/* Hero + national print */}
         <section className="max-w-7xl mx-auto px-6 pt-10 pb-4">
           <Breadcrumbs
