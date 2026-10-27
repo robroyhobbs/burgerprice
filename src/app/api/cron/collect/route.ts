@@ -11,6 +11,7 @@ import {
 import { createCollectStore } from "@/lib/collect-store";
 import { resolveLlmProvider } from "@/lib/llm";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
+import { recordCollectRun } from "@/lib/collect-runs";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const startedAt = Date.now();
   try {
     const store = await createCollectStore();
     const cities = await store.listCities();
@@ -68,6 +70,8 @@ export async function GET(request: NextRequest) {
         const prices = await researchBurgerPrices(city.name, city.state);
         if (prices.length === 0) {
           results[city.slug] = 0; // No prices returned
+          errors[city.slug] = "LLM returned no usable prices";
+          console.error(`collect ${weekOf} ${city.slug}: no usable prices`);
           continue;
         }
 
@@ -130,7 +134,8 @@ export async function GET(request: NextRequest) {
       } catch (err) {
         results[city.slug] = -2; // Error
         const msg = err instanceof Error ? err.message : String(err);
-        errors[city.slug] = msg.slice(0, 200);
+        errors[city.slug] = msg.slice(0, 300);
+        console.error(`collect ${weekOf} ${city.slug} failed: ${msg.slice(0, 1000)}`);
       }
     }
 
@@ -229,8 +234,31 @@ export async function GET(request: NextRequest) {
     revalidatePath("/");
     revalidatePath("/cities");
 
-    return NextResponse.json({
-      status: "collected",
+    const existing = Object.values(results).filter((v) => v === -1).length;
+    // Nothing written and nothing already there means the week did NOT land.
+    // Return 502 so Cloud Scheduler records a failure (and retries) instead of "Success".
+    const landed = collectedCities.length + existing;
+    const runStatus =
+      landed === 0 ? "failed" : landed < cities.length ? "partial" : "ok";
+
+    await recordCollectRun({
+      week_of: weekOf,
+      status: runStatus,
+      cities_total: cities.length,
+      cities_collected: collectedCities.length,
+      cities_existing: existing,
+      results,
+      errors,
+      duration_ms: Date.now() - startedAt,
+    });
+    console.log(
+      `collect ${weekOf}: ${runStatus} collected=${collectedCities.length} existing=${existing} total=${cities.length} ` +
+        `results=${JSON.stringify(results)}`,
+    );
+
+    return NextResponse.json(
+      {
+      status: runStatus === "failed" ? "failed" : "collected",
       week_of: weekOf,
       data_mode: store.mode,
       ai_provider: aiProvider,
@@ -240,7 +268,9 @@ export async function GET(request: NextRequest) {
       purchasing_power_status: ppStatus,
       results,
       ...(Object.keys(errors).length > 0 ? { errors } : {}),
-    });
+      },
+      { status: runStatus === "failed" ? 502 : 200 },
+    );
   } catch (err) {
     console.error("Collection failed:", err);
     return NextResponse.json({ error: "Collection failed" }, { status: 500 });

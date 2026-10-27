@@ -35,8 +35,39 @@ export async function callJsonLlm(
   userPrompt: string,
 ): Promise<string> {
   const provider = resolveLlmProvider();
-  if (provider === "gemini") return callGeminiJson(systemPrompt, userPrompt);
-  return callDeepSeekJson(systemPrompt, userPrompt);
+  const call = () =>
+    provider === "gemini"
+      ? callGeminiJson(systemPrompt, userPrompt)
+      : callDeepSeekJson(systemPrompt, userPrompt);
+
+  // One retry with backoff on transient failures (429 / 5xx / network / empty body).
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const text = stripJsonFences(await call());
+      if (text) return text;
+      lastErr = new Error(`${provider} returned an empty response`);
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientLlmError(err)) throw err;
+    }
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1) ** 2));
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+function isTransientLlmError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/API error (429|5\d\d)\b/.test(msg)) return true;
+  // fetch() network failures surface as TypeError("fetch failed")
+  return err instanceof TypeError || /fetch failed|ECONNRESET|ETIMEDOUT|socket hang up/i.test(msg);
+}
+
+/** Models sometimes wrap JSON in ```json fences despite responseMimeType. */
+export function stripJsonFences(text: string): string {
+  const t = (text ?? "").trim();
+  const m = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return m ? m[1].trim() : t;
 }
 
 async function callDeepSeekJson(

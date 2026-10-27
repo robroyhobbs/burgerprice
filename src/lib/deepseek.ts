@@ -44,7 +44,9 @@ Return as JSON: {"prices": [...]}`;
 
   try {
     const parsed = JSON.parse(raw);
-    const prices: RawPrice[] = (parsed.prices || []).map(
+    // Accept {"prices":[...]} or a bare top-level array.
+    const list = Array.isArray(parsed) ? parsed : parsed?.prices;
+    const prices: RawPrice[] = (Array.isArray(list) ? list : []).map(
       (p: Record<string, unknown>) => ({
         restaurant: String(p.restaurant || "Unknown"),
         burger: String(p.burger || "Burger"),

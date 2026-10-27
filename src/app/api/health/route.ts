@@ -12,6 +12,7 @@ export async function GET() {
   let latestWeek: string | null = null;
   let effectiveMode = mode;
   let databaseError: string | undefined;
+  let lastCollect: unknown = undefined;
 
   if (mode === "database") {
     try {
@@ -30,6 +31,8 @@ export async function GET() {
       latestWeek = latestRes.rows[0]?.latest_week ?? null;
       dbStatus = "connected";
       effectiveMode = "database";
+      const { getLastCollectRun } = await import("@/lib/collect-runs");
+      lastCollect = await getLastCollectRun();
     } catch (err) {
       console.error("Health check Postgres error:", err);
       dbStatus = "error";
@@ -78,6 +81,7 @@ export async function GET() {
     latest_week: latestWeek,
     // Additive freshness signal for the weekly index; status stays "ok" so existing smoke checks don't flip.
     ...getIndexFreshness(latestWeek),
+    ...(lastCollect !== undefined ? { last_collect: lastCollect } : {}),
     timestamp: new Date().toISOString(),
   });
 }
