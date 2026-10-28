@@ -250,6 +250,25 @@ export default async function AboutPage() {
               Outlier filtering removes any prices below $1 or above $50 to prevent
               data quality issues.
             </p>
+            <p>
+              Want the raw tape? Download the{" "}
+              <a
+                href="/data/bpi.csv"
+                className="text-ketchup dark:text-mustard hover:underline"
+              >
+                full BPI history as CSV
+              </a>
+              : one row per city per week, free to use under{" "}
+              <a
+                href="https://creativecommons.org/licenses/by/4.0/"
+                className="text-ketchup dark:text-mustard hover:underline"
+                rel="license noopener"
+                target="_blank"
+              >
+                CC BY 4.0
+              </a>{" "}
+              with credit to burgerprice.com.
+            </p>
 
             <h2 className="font-headline text-xl text-gray-900 dark:text-white">Why Burgers?</h2>
             <p>
