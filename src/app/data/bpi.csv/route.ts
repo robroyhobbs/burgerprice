@@ -28,10 +28,25 @@ function csvCell(value: unknown): string {
 /**
  * Full weekly BPI history as CSV (CC BY 4.0). One row per city per week.
  * Linked from /about and declared as the Dataset distribution in JSON-LD.
+ * `?city=<slug>` narrows to one market (linked from each city page);
+ * an unknown slug returns 404.
  */
-export async function GET() {
-  const cities = await getAllCities();
+export async function GET(request: Request) {
+  const citySlug = new URL(request.url).searchParams.get("city")?.trim() || null;
+  const allCities = await getAllCities();
+  const cities = citySlug
+    ? allCities.filter(({ city }) => city.slug === citySlug)
+    : allCities;
+  if (citySlug && cities.length === 0) {
+    return new Response("Unknown city\n", {
+      status: 404,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
   const rows: string[] = [COLUMNS.join(",")];
+  const filename = citySlug
+    ? `burger-price-index-${citySlug}.csv`
+    : "burger-price-index.csv";
 
   const all = cities.flatMap(({ city, history }) =>
     history.map((s) => ({ city, s })),

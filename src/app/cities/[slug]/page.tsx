@@ -200,6 +200,15 @@ export default async function CityPage({ params }: CityPageProps) {
             </Link>
             .
           </p>
+          <p className="text-xs text-gray-400 mt-2">
+            <a
+              href={`/data/bpi.csv?city=${cityData.city.slug}`}
+              className="text-ketchup dark:text-mustard hover:underline"
+            >
+              Download {cityData.city.name}&apos;s weekly BPI history (CSV)
+            </a>{" "}
+            · free to reuse under CC BY 4.0 with credit to burgerprice.com.
+          </p>
         </section>
       </main>
       <Footer />

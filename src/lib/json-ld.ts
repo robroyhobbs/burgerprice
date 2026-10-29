@@ -54,7 +54,7 @@ export function buildCityPageJsonLd(data: CityDashboardData): Record<string, unk
     url,
     license: "https://creativecommons.org/licenses/by/4.0/",
     isAccessibleForFree: true,
-    distribution: buildCsvDistribution(base),
+    distribution: buildCsvDistribution(base, city.slug),
     creator: {
       "@type": "Organization",
       name: "Burger Price Index",
@@ -557,11 +557,13 @@ export const NEWSLETTER_FAQ_ITEMS: FaqItem[] = [
   },
 ];
 
-/** Downloadable full-history CSV (see src/app/data/bpi.csv/route.ts). */
-function buildCsvDistribution(base: string): Record<string, unknown> {
+/** Downloadable history CSV (see src/app/data/bpi.csv/route.ts); city slug narrows to one market. */
+function buildCsvDistribution(base: string, citySlug?: string): Record<string, unknown> {
   return {
     "@type": "DataDownload",
     encodingFormat: "text/csv",
-    contentUrl: `${base}/data/bpi.csv`,
+    contentUrl: citySlug
+      ? `${base}/data/bpi.csv?city=${encodeURIComponent(citySlug)}`
+      : `${base}/data/bpi.csv`,
   };
 }
