@@ -81,7 +81,7 @@ export async function GET(request: Request) {
   return new Response(`${rows.join("\r\n")}\r\n`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": 'inline; filename="burger-price-index.csv"',
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "public, max-age=900, s-maxage=3600",
     },
   });
