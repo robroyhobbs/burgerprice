@@ -4,7 +4,7 @@ export function Footer() {
   return (
     <footer className="border-t border-gray-200 dark:border-grill-lighter mt-16 bg-gray-50 dark:bg-grill-light">
       <div className="max-w-7xl mx-auto px-6 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-4">
@@ -41,6 +41,27 @@ export function Footer() {
               <Link href="/about#data-sources" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
                 Data Sources
               </Link>
+            </nav>
+          </div>
+
+          {/* Open data */}
+          <div>
+            <h3 className="text-xs uppercase tracking-widest text-gray-400 font-semibold mb-4">
+              Open Data
+            </h3>
+            <nav className="flex flex-col gap-3 text-sm text-gray-500 dark:text-gray-400">
+              <a href="/data/bpi.csv" download className="hover:text-ketchup dark:hover:text-mustard transition-colors">
+                Download BPI History (CSV)
+              </a>
+              <a href="/feed.xml" type="application/rss+xml" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
+                RSS Feed
+              </a>
+              <a href="/llms.txt" type="text/plain" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
+                llms.txt
+              </a>
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                Free to use under CC BY 4.0. Cite the Burger Price Index.
+              </span>
             </nav>
           </div>
 
