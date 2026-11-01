@@ -53,6 +53,9 @@ export function Footer() {
               <a href="/data/bpi.csv" download className="hover:text-ketchup dark:hover:text-mustard transition-colors">
                 Download BPI History (CSV)
               </a>
+              <a href="/data/bpi.json" type="application/json" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
+                BPI History (JSON)
+              </a>
               <a href="/feed.xml" type="application/rss+xml" className="hover:text-ketchup dark:hover:text-mustard transition-colors">
                 RSS Feed
               </a>

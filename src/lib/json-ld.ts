@@ -557,13 +557,11 @@ export const NEWSLETTER_FAQ_ITEMS: FaqItem[] = [
   },
 ];
 
-/** Downloadable history CSV (see src/app/data/bpi.csv/route.ts); city slug narrows to one market. */
-function buildCsvDistribution(base: string, citySlug?: string): Record<string, unknown> {
-  return {
-    "@type": "DataDownload",
-    encodingFormat: "text/csv",
-    contentUrl: citySlug
-      ? `${base}/data/bpi.csv?city=${encodeURIComponent(citySlug)}`
-      : `${base}/data/bpi.csv`,
-  };
+/** Downloadable history as CSV and JSON (see src/app/data/); city slug narrows to one market. */
+function buildCsvDistribution(base: string, citySlug?: string): Record<string, unknown>[] {
+  const query = citySlug ? `?city=${encodeURIComponent(citySlug)}` : "";
+  return [
+    { "@type": "DataDownload", encodingFormat: "text/csv", contentUrl: `${base}/data/bpi.csv${query}` },
+    { "@type": "DataDownload", encodingFormat: "application/json", contentUrl: `${base}/data/bpi.json${query}` },
+  ];
 }
