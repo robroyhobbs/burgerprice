@@ -257,8 +257,15 @@ export default async function AboutPage() {
                 className="text-ketchup dark:text-mustard hover:underline"
               >
                 full BPI history as CSV
+              </a>{" "}
+              (or{" "}
+              <a
+                href="/data/bpi.json"
+                className="text-ketchup dark:text-mustard hover:underline"
+              >
+                JSON
               </a>
-              : one row per city per week, free to use under{" "}
+              ): one row per city per week, free to use under{" "}
               <a
                 href="https://creativecommons.org/licenses/by/4.0/"
                 className="text-ketchup dark:text-mustard hover:underline"

@@ -53,6 +53,7 @@ Latest print: ${latestWeek ? `week of ${latestWeek}` : "none yet"}. Weeks start 
 
 - [Full BPI history CSV](${baseUrl}/data/bpi.csv): one row per city per week, CC BY 4.0
 - Per-city CSV: ${baseUrl}/data/bpi.csv?city=<slug>
+- [Full BPI history JSON](${baseUrl}/data/bpi.json): same data grouped by city, CORS-open; add ?city=<slug> for one market
 
 ## Cities (latest print)
 
