@@ -13,6 +13,7 @@ import { buildTierLeaderboards, cityTierStandings } from "@/lib/restaurant-utils
 import { Header } from "@/components/header";
 import { PrintDelayNotice } from "@/components/print-delay-notice";
 import { Footer } from "@/components/footer";
+import { buildRankLadder } from "@/lib/rank-ladder";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,7 @@ export default async function CityPage({ params }: CityPageProps) {
   const allCities = await getAllCities();
   const nationalAvg = calculateNationalAverage(allCities);
   const rank = calculateRank(allCities, cityData.city.slug);
+  const rankLadder = buildRankLadder(allCities, cityData.city.slug);
   const peerCities = findPeerCities(allCities, cityData.city.slug, 2);
   const tierStandings = cityTierStandings(
     buildTierLeaderboards(
@@ -151,6 +153,7 @@ export default async function CityPage({ params }: CityPageProps) {
           totalCities={allCities.length}
           peerCities={peerCities}
           tierStandings={tierStandings}
+          rankLadder={rankLadder}
         />
 
         {/* FAQ — mirrors FAQPage JSON-LD */}

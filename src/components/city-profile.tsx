@@ -24,6 +24,8 @@ import { ShareStrip } from "./share-strip";
 import { Breadcrumbs } from "./breadcrumbs";
 import { buildCityCaption, cityShareUrl } from "@/lib/share";
 import { buildSameStoreCheck, buildSameStoreStory } from "@/lib/same-store";
+import type { RankLadder } from "@/lib/rank-ladder";
+import { RankLadderBlock } from "./rank-ladder";
 
 export interface PeerCity {
   name: string;
@@ -39,6 +41,7 @@ interface CityProfileProps {
   totalCities: number;
   peerCities?: PeerCity[];
   tierStandings?: Partial<Record<PriceTier, CityTierStanding>>;
+  rankLadder?: RankLadder | null;
 }
 
 function findWebsite(name: string, prices: RawPrice[]): string | null {
@@ -53,6 +56,7 @@ export function CityProfile({
   totalCities,
   peerCities = [],
   tierStandings = {},
+  rankLadder = null,
 }: CityProfileProps) {
   const { city, currentSnapshot, spotlight } = data;
   const bpi = currentSnapshot?.bpi_score ?? null;
@@ -542,6 +546,11 @@ export function CityProfile({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Where it ranks — neighbors on the board */}
+      {rankLadder && (
+        <RankLadderBlock ladder={rankLadder} cityName={city.name} />
       )}
 
       {/* Peer cities (closest BPI) */}
