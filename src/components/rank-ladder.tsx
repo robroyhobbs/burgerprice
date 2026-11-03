@@ -12,6 +12,19 @@ function ordinalNote(ladder: RankLadder): string {
   } cheaper.`;
 }
 
+function movementNote(ladder: RankLadder): string | null {
+  if (ladder.prevRank == null) return null;
+  const prevWeek = ladder.prevWeekOf ? formatTapeWeek(ladder.prevWeekOf) : null;
+  const since = prevWeek ? ` since the week of ${prevWeek}` : " since the prior print";
+  const delta = ladder.prevRank - ladder.rank; // positive = moved up the board (pricier)
+  if (delta === 0) return `Held at #${ladder.rank}${since}.`;
+  const spots = Math.abs(delta);
+  const unit = spots === 1 ? "spot" : "spots";
+  return delta > 0
+    ? `Up ${spots} ${unit} (pricier)${since}: from #${ladder.prevRank} to #${ladder.rank}.`
+    : `Down ${spots} ${unit} (cheaper)${since}: from #${ladder.prevRank} to #${ladder.rank}.`;
+}
+
 function Neighbor({
   label,
   city,
@@ -90,6 +103,7 @@ export function RankLadderBlock({
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         {ordinalNote(ladder)}
+        {movementNote(ladder) ? ` ${movementNote(ladder)}` : ""}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Neighbor

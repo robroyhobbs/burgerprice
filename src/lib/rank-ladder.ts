@@ -17,6 +17,12 @@ export interface RankLadder {
   pricier: LadderCity | null;
   /** Next city down the board (cheaper), null when this city is last. */
   cheaper: LadderCity | null;
+  /** Rank on the prior print's board, null when there is no comparable prior print. */
+  prevRank: number | null;
+  /** Prior board size used for prevRank. */
+  prevTotal: number | null;
+  /** Week of the prior print used for the comparison. */
+  prevWeekOf: string | null;
 }
 
 /**
@@ -48,7 +54,22 @@ export function buildRankLadder(
   if (idx === -1) return null;
 
   const self = cities.find((c) => c.city.slug === slug);
+
+  // Prior board: rank every city that has a prior print, priciest first.
+  const prior = cities
+    .filter((c) => c.previousSnapshot?.bpi_score != null)
+    .sort(
+      (a, b) =>
+        (b.previousSnapshot!.bpi_score as number) -
+        (a.previousSnapshot!.bpi_score as number),
+    );
+  const prevIdx = prior.findIndex((c) => c.city.slug === slug);
+  const hasPrev = prevIdx !== -1 && prior.length === ranked.length;
+
   return {
+    prevRank: hasPrev ? prevIdx + 1 : null,
+    prevTotal: hasPrev ? prior.length : null,
+    prevWeekOf: hasPrev ? (self?.previousSnapshot?.week_of ?? null) : null,
     rank: idx + 1,
     total: ranked.length,
     bpi: ranked[idx].bpi,
