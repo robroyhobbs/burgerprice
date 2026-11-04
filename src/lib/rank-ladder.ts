@@ -78,3 +78,38 @@ export function buildRankLadder(
     cheaper: idx < ranked.length - 1 ? ranked[idx + 1] : null,
   };
 }
+
+export interface RankMove {
+  slug: string;
+  /** Current rank on the board (1 = priciest). */
+  rank: number;
+  /** Rank on the prior print's board, null when no comparable prior print. */
+  prevRank: number | null;
+  /** Spots moved up the board (pricier) when positive, down when negative; null when unknown. */
+  delta: number | null;
+  /** Week of the prior print the comparison uses. */
+  prevWeekOf: string | null;
+}
+
+/**
+ * Board movement for every ranked city, built on buildRankLadder so the
+ * rules (actual prior available print, no comparison unless the prior board
+ * covers the same number of cities) match the city pages exactly.
+ */
+export function buildRankMovements(
+  cities: CityDashboardData[],
+): Map<string, RankMove> {
+  const moves = new Map<string, RankMove>();
+  for (const c of cities) {
+    const ladder = buildRankLadder(cities, c.city.slug);
+    if (!ladder) continue;
+    moves.set(c.city.slug, {
+      slug: c.city.slug,
+      rank: ladder.rank,
+      prevRank: ladder.prevRank,
+      delta: ladder.prevRank == null ? null : ladder.prevRank - ladder.rank,
+      prevWeekOf: ladder.prevWeekOf,
+    });
+  }
+  return moves;
+}
