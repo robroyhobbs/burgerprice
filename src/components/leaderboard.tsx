@@ -1,6 +1,40 @@
 import type { CityDashboardData } from "@/lib/types";
 import { vsNationalPct } from "@/lib/bpi";
 import Link from "next/link";
+import { buildRankMovements, type RankMove } from "@/lib/rank-ladder";
+import { formatTapeWeek } from "@/lib/city-readout";
+
+function MoveBadge({ move }: { move: RankMove | undefined }) {
+  if (!move || move.delta == null || move.prevRank == null) return null;
+  if (move.delta === 0) {
+    return (
+      <span
+        className="bpi-number block text-[10px] font-bold text-gray-400 leading-none mt-1"
+        title={`Held at #${move.rank}`}
+        aria-label={`Held at number ${move.rank}`}
+      >
+        =
+      </span>
+    );
+  }
+  const up = move.delta > 0;
+  const spots = Math.abs(move.delta);
+  const unit = spots === 1 ? "spot" : "spots";
+  return (
+    <span
+      className={`bpi-number block text-[10px] font-bold leading-none mt-1 ${
+        up
+          ? "text-negative dark:text-red-400"
+          : "text-lettuce dark:text-lettuce-light"
+      }`}
+      title={`${up ? "Up" : "Down"} ${spots} ${unit}: from #${move.prevRank} to #${move.rank}`}
+      aria-label={`${up ? "Up" : "Down"} ${spots} ${unit}, from number ${move.prevRank} to number ${move.rank}`}
+    >
+      {up ? "▲" : "▼"}
+      {spots}
+    </span>
+  );
+}
 
 interface LeaderboardProps {
   cities: CityDashboardData[];
@@ -28,6 +62,12 @@ export function Leaderboard({
       if (b.bpi === null) return -1;
       return b.bpi - a.bpi;
     });
+
+  const moves = buildRankMovements(cities);
+  const compared = Array.from(moves.values()).find((m) => m.prevWeekOf != null);
+  const prevWeekLabel = compared?.prevWeekOf
+    ? formatTapeWeek(compared.prevWeekOf)
+    : null;
 
   return (
     <section className="max-w-7xl mx-auto px-6 py-10">
@@ -77,8 +117,11 @@ export function Leaderboard({
               href={`/cities/${item.city.slug}`}
               className="grid grid-cols-[3rem_1fr_6rem_5rem] md:grid-cols-[3rem_1fr_7rem_6rem] gap-2 px-6 py-4 border-b border-gray-50 dark:border-grill-lighter/50 last:border-b-0 hover:bg-gray-50 dark:hover:bg-grill transition-colors items-center"
             >
-              <span className="bpi-number text-sm font-bold text-gray-300 dark:text-gray-600">
-                {rank}
+              <span>
+                <span className="bpi-number text-sm font-bold text-gray-300 dark:text-gray-600 block leading-none">
+                  {rank}
+                </span>
+                <MoveBadge move={moves.get(item.city.slug)} />
               </span>
               <div className="min-w-0">
                 <span className="font-medium text-sm text-gray-900 dark:text-white truncate block">
@@ -129,6 +172,13 @@ export function Leaderboard({
           );
         })}
       </div>
+      {prevWeekLabel && (
+        <p className="mt-3 text-xs text-gray-400">
+          Rank arrows compare each city&apos;s spot with the prior available
+          print (week of {prevWeekLabel}). ▲ moved up the board (pricier), ▼
+          moved down (cheaper), = held.
+        </p>
+      )}
     </section>
   );
 }
