@@ -17,6 +17,7 @@ import {
 } from "@/lib/share";
 import type { CityDashboardData } from "@/lib/types";
 import { buildTierLeaderboards, type TierLeaderboard } from "@/lib/restaurant-utils";
+import { buildRankMovements } from "@/lib/rank-ladder";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -203,6 +204,8 @@ export default async function RankingsPage() {
       })),
   );
 
+  const shakeup = buildBoardShakeup(cities);
+
   const jsonLd = buildJsonLd(ranked, weekOf);
   const natUp = nationalChange !== null && nationalChange > 0;
   const natDown = nationalChange !== null && nationalChange < 0;
@@ -317,6 +320,8 @@ export default async function RankingsPage() {
               )}
             </div>
           </div>
+
+          {shakeup && <BoardShakeup shakeup={shakeup} />}
         </section>
 
         {nationalCurrent && weekOf && (
@@ -488,5 +493,117 @@ function TierRow({
         </p>
       </div>
     </Link>
+  );
+}
+
+interface ShakeupMove {
+  slug: string;
+  name: string;
+  state: string;
+  rank: number;
+  prevRank: number;
+  spots: number;
+}
+
+interface BoardShakeupData {
+  prevWeekOf: string;
+  climber: ShakeupMove | null;
+  slider: ShakeupMove | null;
+  held: number;
+  total: number;
+}
+
+/**
+ * Biggest rank climber and slider vs the prior available print, using the
+ * same movement rules as the leaderboard arrows. Null when no comparison.
+ */
+function buildBoardShakeup(
+  cities: CityDashboardData[],
+): BoardShakeupData | null {
+  const moves = [...buildRankMovements(cities).values()].filter(
+    (m) => m.delta != null && m.prevRank != null && m.prevWeekOf,
+  );
+  if (moves.length === 0) return null;
+  const toMove = (m: (typeof moves)[number]): ShakeupMove | null => {
+    const c = cities.find((x) => x.city.slug === m.slug);
+    if (!c) return null;
+    return {
+      slug: m.slug,
+      name: c.city.name,
+      state: c.city.state,
+      rank: m.rank,
+      prevRank: m.prevRank as number,
+      spots: Math.abs(m.delta as number),
+    };
+  };
+  // Biggest move first; ties go to the higher-ranked (pricier) city.
+  const up = moves
+    .filter((m) => (m.delta as number) > 0)
+    .sort((a, b) => (b.delta as number) - (a.delta as number) || a.rank - b.rank);
+  const down = moves
+    .filter((m) => (m.delta as number) < 0)
+    .sort((a, b) => (a.delta as number) - (b.delta as number) || a.rank - b.rank);
+  return {
+    prevWeekOf: moves[0].prevWeekOf as string,
+    climber: up.length > 0 ? toMove(up[0]) : null,
+    slider: down.length > 0 ? toMove(down[0]) : null,
+    held: moves.filter((m) => m.delta === 0).length,
+    total: moves.length,
+  };
+}
+
+function BoardShakeup({ shakeup }: { shakeup: BoardShakeupData }) {
+  const since = new Date(shakeup.prevWeekOf + "T00:00:00").toLocaleDateString(
+    "en-US",
+    { month: "short", day: "numeric" },
+  );
+  const { climber, slider, held, total } = shakeup;
+  const spots = (n: number) => `${n} ${n === 1 ? "spot" : "spots"}`;
+  return (
+    <div
+      className="mt-4 bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter px-5 py-4"
+      aria-label="Board shakeup"
+    >
+      <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-2">
+        Board shakeup · since week of {since}
+      </p>
+      {climber || slider ? (
+        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+          {climber && (
+            <>
+              <span className="text-negative dark:text-red-400 font-bold">▲</span>{" "}
+              Biggest climber:{" "}
+              <Link
+                href={`/cities/${climber.slug}`}
+                className="font-medium text-gray-900 dark:text-white hover:text-ketchup dark:hover:text-mustard"
+              >
+                {climber.name}
+              </Link>
+              , up {spots(climber.spots)} to #{climber.rank} (from #{climber.prevRank}).{" "}
+            </>
+          )}
+          {slider && (
+            <>
+              <span className="text-lettuce dark:text-lettuce-light font-bold">▼</span>{" "}
+              Biggest slide:{" "}
+              <Link
+                href={`/cities/${slider.slug}`}
+                className="font-medium text-gray-900 dark:text-white hover:text-ketchup dark:hover:text-mustard"
+              >
+                {slider.name}
+              </Link>
+              , down {spots(slider.spots)} to #{slider.rank} (from #{slider.prevRank}).{" "}
+            </>
+          )}
+          <span className="text-gray-400">
+            {held} of {total} {total === 1 ? "city" : "cities"} held their spot.
+          </span>
+        </p>
+      ) : (
+        <p className="text-sm text-gray-700 dark:text-gray-300">
+          No rank changes. All {total} cities held their spot.
+        </p>
+      )}
+    </div>
   );
 }
