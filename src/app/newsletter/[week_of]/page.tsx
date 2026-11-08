@@ -11,9 +11,11 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
 import { EditionNav } from "@/components/edition-nav";
 import { buildWeekSameStoreReads } from "@/lib/same-store";
+import { buildBoardShakeupForWeek } from "@/lib/rank-ladder";
 import {
   buildNewsletterCaption,
   newsletterOgPath,
+  newsletterRankShareClause,
   newsletterShareUrl,
 } from "@/lib/share";
 import {
@@ -98,13 +100,14 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
     notFound();
   }
 
+  const weekKey = String(newsletter.week_of).slice(0, 10);
+  const shakeup = buildBoardShakeupForWeek(cities, weekKey);
   const shareUrl = newsletterShareUrl(newsletter.week_of);
   const caption = buildNewsletterCaption({
     weekOf: newsletter.week_of,
     headline: newsletter.headline,
+    rankLine: newsletterRankShareClause(shakeup),
   });
-
-  const weekKey = String(newsletter.week_of).slice(0, 10);
   const crumbs = [
     { name: "Home", path: "/" },
     { name: "Newsletter", path: "/newsletter" },
@@ -159,6 +162,7 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
             headline={newsletter.headline}
             sections={newsletter.sections}
             sameStore={sameStore}
+            shakeup={shakeup}
           />
 
           <div className="max-w-4xl mx-auto">

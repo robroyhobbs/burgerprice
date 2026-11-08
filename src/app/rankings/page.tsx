@@ -17,7 +17,7 @@ import {
 } from "@/lib/share";
 import type { CityDashboardData } from "@/lib/types";
 import { buildTierLeaderboards, type TierLeaderboard } from "@/lib/restaurant-utils";
-import { buildRankMovements } from "@/lib/rank-ladder";
+import { buildBoardShakeup, type BoardShakeupData } from "@/lib/rank-ladder";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -494,62 +494,6 @@ function TierRow({
       </div>
     </Link>
   );
-}
-
-interface ShakeupMove {
-  slug: string;
-  name: string;
-  state: string;
-  rank: number;
-  prevRank: number;
-  spots: number;
-}
-
-interface BoardShakeupData {
-  prevWeekOf: string;
-  climber: ShakeupMove | null;
-  slider: ShakeupMove | null;
-  held: number;
-  total: number;
-}
-
-/**
- * Biggest rank climber and slider vs the prior available print, using the
- * same movement rules as the leaderboard arrows. Null when no comparison.
- */
-function buildBoardShakeup(
-  cities: CityDashboardData[],
-): BoardShakeupData | null {
-  const moves = [...buildRankMovements(cities).values()].filter(
-    (m) => m.delta != null && m.prevRank != null && m.prevWeekOf,
-  );
-  if (moves.length === 0) return null;
-  const toMove = (m: (typeof moves)[number]): ShakeupMove | null => {
-    const c = cities.find((x) => x.city.slug === m.slug);
-    if (!c) return null;
-    return {
-      slug: m.slug,
-      name: c.city.name,
-      state: c.city.state,
-      rank: m.rank,
-      prevRank: m.prevRank as number,
-      spots: Math.abs(m.delta as number),
-    };
-  };
-  // Biggest move first; ties go to the higher-ranked (pricier) city.
-  const up = moves
-    .filter((m) => (m.delta as number) > 0)
-    .sort((a, b) => (b.delta as number) - (a.delta as number) || a.rank - b.rank);
-  const down = moves
-    .filter((m) => (m.delta as number) < 0)
-    .sort((a, b) => (a.delta as number) - (b.delta as number) || a.rank - b.rank);
-  return {
-    prevWeekOf: moves[0].prevWeekOf as string,
-    climber: up.length > 0 ? toMove(up[0]) : null,
-    slider: down.length > 0 ? toMove(down[0]) : null,
-    held: moves.filter((m) => m.delta === 0).length,
-    total: moves.length,
-  };
 }
 
 function BoardShakeup({ shakeup }: { shakeup: BoardShakeupData }) {

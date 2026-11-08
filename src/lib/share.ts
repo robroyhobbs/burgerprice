@@ -151,12 +151,44 @@ export function newsletterOgPath(weekOf?: string): string {
   return "/api/og?newsletter=1";
 }
 
+function rankMoveCount(spots: number): string {
+  return spots === 1 ? "1 spot" : String(spots);
+}
+
+/**
+ * Compact climber/slide sentence for the newsletter share caption.
+ * Null when the board didn't move, so the caption stays the plain print line.
+ */
+export function newsletterRankShareClause(
+  shakeup: {
+    climber: { name: string; spots: number; rank: number } | null;
+    slider: { name: string; spots: number; rank: number } | null;
+  } | null,
+): string | null {
+  if (!shakeup) return null;
+  const parts: string[] = [];
+  if (shakeup.climber) {
+    const { name, spots, rank } = shakeup.climber;
+    parts.push(`${name} climbed ${rankMoveCount(spots)} to #${rank}`);
+  }
+  if (shakeup.slider) {
+    const { name, spots, rank } = shakeup.slider;
+    parts.push(`${name} slid ${rankMoveCount(spots)} to #${rank}`);
+  }
+  if (parts.length === 0) return null;
+  return `${parts.join(" and ")}.`;
+}
+
 export function buildNewsletterCaption(opts: {
   weekOf: string;
   headline: string;
+  /** Punchy rank-movement sentence. Omitted when null or blank. */
+  rankLine?: string | null;
 }): string {
   const week = formatWeekShort(opts.weekOf);
-  return `BPI Weekly — week of ${week}: "${opts.headline}" The tape doesn't care about your feelings. Read the print: ${newsletterShareUrl(opts.weekOf)}`;
+  const rank = opts.rankLine?.trim().replace(/\.+$/, "");
+  const movement = rank ? ` ${rank}.` : "";
+  return `BPI Weekly — week of ${week}: "${opts.headline}"${movement} The tape doesn't care about your feelings. Read the print: ${newsletterShareUrl(opts.weekOf)}`;
 }
 
 export function rankingsShareUrl(): string {

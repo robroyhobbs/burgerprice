@@ -2,6 +2,7 @@
 
 import type { NewsletterContent } from "@/lib/types";
 import type { TapeSameStoreRead } from "@/lib/same-store";
+import type { BoardShakeupData } from "@/lib/rank-ladder";
 import Link from "next/link";
 
 interface NewsletterEditionProps {
@@ -10,6 +11,8 @@ interface NewsletterEditionProps {
   sections: NewsletterContent;
   /** Same-store read per tape city, keyed by cityNameKey(city). */
   sameStore?: Record<string, TapeSameStoreRead>;
+  /** Rank climber/slide vs the prior available print. Omitted when there's no comparison. */
+  shakeup?: BoardShakeupData | null;
 }
 
 function tapeKey(name: string): string {
@@ -70,6 +73,7 @@ export function NewsletterEdition({
   headline,
   sections,
   sameStore,
+  shakeup,
 }: NewsletterEditionProps) {
   const tapeReads = sameStore
     ? sections.theTape.map((m) => sameStore[tapeKey(m.city)]).filter(Boolean)
@@ -94,6 +98,8 @@ export function NewsletterEdition({
           {headline}
         </h1>
       </div>
+
+      {shakeup && <BoardShakeupSection shakeup={shakeup} />}
 
       {/* Market Overview */}
       <Section title="MARKET OVERVIEW" icon="📊">
@@ -219,6 +225,53 @@ export function NewsletterEdition({
         </p>
       </div>
     </article>
+  );
+}
+
+function BoardShakeupSection({ shakeup }: { shakeup: BoardShakeupData }) {
+  const since = new Date(shakeup.prevWeekOf + "T00:00:00").toLocaleDateString(
+    "en-US",
+    { month: "short", day: "numeric" },
+  );
+  const { climber, slider, held, total } = shakeup;
+  const spots = (n: number) => `${n} ${n === 1 ? "spot" : "spots"}`;
+  const cityCls =
+    "font-medium text-green-300 hover:text-green-400 underline decoration-dotted";
+  return (
+    <Section title="BOARD SHAKEUP" icon="🏆">
+      <p className="text-[10px] text-green-500/60 font-mono uppercase tracking-widest mb-3">
+        vs the prior available print · week of {since}
+      </p>
+      {climber || slider ? (
+        <p className="text-sm text-gray-300 leading-relaxed">
+          {climber && (
+            <>
+              <span className="text-red-400 font-bold">▲</span> Biggest climber:{" "}
+              <Link href={`/cities/${climber.slug}`} className={cityCls}>
+                {climber.name}
+              </Link>
+              , up {spots(climber.spots)} to #{climber.rank} (from #{climber.prevRank}).{" "}
+            </>
+          )}
+          {slider && (
+            <>
+              <span className="text-green-400 font-bold">▼</span> Biggest slide:{" "}
+              <Link href={`/cities/${slider.slug}`} className={cityCls}>
+                {slider.name}
+              </Link>
+              , down {spots(slider.spots)} to #{slider.rank} (from #{slider.prevRank}).{" "}
+            </>
+          )}
+          <span className="text-gray-500">
+            {held} of {total} {total === 1 ? "city" : "cities"} held their spot.
+          </span>
+        </p>
+      ) : (
+        <p className="text-sm text-gray-300 leading-relaxed">
+          No rank changes. All {total} cities held their spot.
+        </p>
+      )}
+    </Section>
   );
 }
 
