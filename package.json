@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "node --test src/lib/newsletter-board.test.ts",
     "seed": "npx tsx src/scripts/seed.ts"
   },
   "keywords": [],

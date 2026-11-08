@@ -113,3 +113,101 @@ export function buildRankMovements(
   }
   return moves;
 }
+
+export interface ShakeupMove {
+  slug: string;
+  name: string;
+  state: string;
+  rank: number;
+  prevRank: number;
+  spots: number;
+}
+
+export interface BoardShakeupData {
+  prevWeekOf: string;
+  climber: ShakeupMove | null;
+  slider: ShakeupMove | null;
+  held: number;
+  total: number;
+}
+
+/**
+ * Biggest rank climber and slider vs the prior available print, using the
+ * same movement rules as the leaderboard arrows. Null when no comparison.
+ */
+export function buildBoardShakeup(
+  cities: CityDashboardData[],
+): BoardShakeupData | null {
+  const moves = [...buildRankMovements(cities).values()].filter(
+    (m) => m.delta != null && m.prevRank != null && m.prevWeekOf,
+  );
+  if (moves.length === 0) return null;
+  const toMove = (m: (typeof moves)[number]): ShakeupMove | null => {
+    const c = cities.find((x) => x.city.slug === m.slug);
+    if (!c) return null;
+    return {
+      slug: m.slug,
+      name: c.city.name,
+      state: c.city.state,
+      rank: m.rank,
+      prevRank: m.prevRank as number,
+      spots: Math.abs(m.delta as number),
+    };
+  };
+  // Biggest move first; ties go to the higher-ranked (pricier) city.
+  const up = moves
+    .filter((m) => (m.delta as number) > 0)
+    .sort((a, b) => (b.delta as number) - (a.delta as number) || a.rank - b.rank);
+  const down = moves
+    .filter((m) => (m.delta as number) < 0)
+    .sort((a, b) => (a.delta as number) - (b.delta as number) || a.rank - b.rank);
+  return {
+    prevWeekOf: moves[0].prevWeekOf as string,
+    climber: up.length > 0 ? toMove(up[0]) : null,
+    slider: down.length > 0 ? toMove(down[0]) : null,
+    held: moves.filter((m) => m.delta === 0).length,
+    total: moves.length,
+  };
+}
+
+function weekKey(weekOf: string | null | undefined): string {
+  return String(weekOf ?? "").slice(0, 10);
+}
+
+/**
+ * Replay one print. currentSnapshot is that week's snapshot; previousSnapshot
+ * is the prior entry in history, so a missing week (the Oct 26 gap) is not
+ * treated as the comparison. Cities with no snapshot that week drop off the board.
+ */
+function citiesAsOfPrint(
+  cities: CityDashboardData[],
+  weekOf: string,
+): CityDashboardData[] {
+  const week = weekKey(weekOf);
+  return cities.map((c) => {
+    const hist = [...(c.history ?? [])].sort((a, b) =>
+      weekKey(a.week_of).localeCompare(weekKey(b.week_of)),
+    );
+    const idx = hist.findIndex((s) => weekKey(s.week_of) === week);
+    if (idx === -1) {
+      return { ...c, currentSnapshot: null, previousSnapshot: null };
+    }
+    return {
+      ...c,
+      currentSnapshot: hist[idx],
+      previousSnapshot: idx > 0 ? hist[idx - 1] : null,
+    };
+  });
+}
+
+/**
+ * Board shakeup for one edition week, vs that week's prior available print.
+ * Same rules as buildBoardShakeup / buildRankMovements — history is replayed
+ * so archived editions don't use the latest print.
+ */
+export function buildBoardShakeupForWeek(
+  cities: CityDashboardData[],
+  weekOf: string,
+): BoardShakeupData | null {
+  return buildBoardShakeup(citiesAsOfPrint(cities, weekOf));
+}
