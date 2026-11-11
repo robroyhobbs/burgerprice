@@ -21,7 +21,8 @@ import { FindYourCity } from "@/components/find-your-city";
 import { Footer } from "@/components/footer";
 import { PrintDelayNotice } from "@/components/print-delay-notice";
 import { getShowdownIndices, parseShowdownPair } from "@/lib/showdown";
-import { showdownOgPath } from "@/lib/share";
+import { buildBoardShakeupForWeek } from "@/lib/rank-ladder";
+import { newsletterRankShareClause, showdownOgPath } from "@/lib/share";
 import {
   buildFaqPageJsonLd,
   buildHomePageJsonLd,
@@ -154,6 +155,14 @@ export default async function Home({ searchParams }: HomeProps) {
           nationalPrevious.avg_bpi) *
         100
       : null;
+  const nationalRankLine = nationalCurrent
+    ? newsletterRankShareClause(
+        buildBoardShakeupForWeek(
+          data.cities,
+          String(nationalCurrent.week_of).slice(0, 10),
+        ),
+      )
+    : null;
 
   // Pick 2 showdown cities: shared pair from the URL when both are valid,
   // otherwise the deterministic weekly rotation.
@@ -233,6 +242,7 @@ export default async function Home({ searchParams }: HomeProps) {
           history={nationalHistory}
           cheapestCity={cheapestCity}
           mostExpensiveCity={mostExpensiveCity}
+          rankLine={nationalRankLine}
         />
         <BpiExplainer
           avgBpi={nationalCurrent?.avg_bpi ?? null}
