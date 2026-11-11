@@ -101,6 +101,22 @@ export function nationalShareUrl(): string {
   return `${getShareBaseUrl()}/`;
 }
 
+/** X wraps every link as a t.co URL and counts it as 23 characters. */
+const X_URL_WEIGHT = 23;
+const X_POST_LIMIT = 280;
+
+function xPostLength(text: string, url: string): number {
+  if (!url) return text.length;
+  let length = 0;
+  let rest = text;
+  while (rest.includes(url)) {
+    const at = rest.indexOf(url);
+    length += at + X_URL_WEIGHT;
+    rest = rest.slice(at + url.length);
+  }
+  return length + rest.length;
+}
+
 export function buildNationalCaption(opts: {
   weekOf: string;
   avgBpi: number;
@@ -110,6 +126,11 @@ export function buildNationalCaption(opts: {
   cheapestCity?: string | null;
   /** Highest-BPI city name (premium print). */
   mostExpensiveCity?: string | null;
+  /**
+   * Climber/slide sentence from newsletterRankShareClause.
+   * Omitted when null, blank, or when it would push the post over X's limit.
+   */
+  rankLine?: string | null;
 }): string {
   const week = formatWeekShort(opts.weekOf);
   const changeText =
@@ -134,7 +155,16 @@ export function buildNationalCaption(opts: {
       ? ` Avg across ${opts.cityCount} cities.`
       : "";
 
-  return `National BPI: $${opts.avgBpi.toFixed(2)}${changeText} — week of ${week}.${extremes}${coverage} Bloomberg Terminal energy, Wendy's drive-thru prices — ${nationalShareUrl()}`;
+  const url = nationalShareUrl();
+  const lead = `National BPI: $${opts.avgBpi.toFixed(2)}${changeText} — week of ${week}.${extremes}${coverage}`;
+  const tail = ` Bloomberg Terminal energy, Wendy's drive-thru prices — ${url}`;
+  const plain = `${lead}${tail}`;
+  const rank = opts.rankLine?.trim().replace(/\.+$/, "");
+  if (!rank) return plain;
+  const withClause = `${lead} ${rank}.${tail}`;
+  // Monday X posts reuse this caption. Drop the clause rather than exceed 280.
+  if (xPostLength(withClause, url) > X_POST_LIMIT) return plain;
+  return withClause;
 }
 
 export function newsletterShareUrl(weekOf?: string): string {
@@ -156,8 +186,9 @@ function rankMoveCount(spots: number): string {
 }
 
 /**
- * Compact climber/slide sentence for the newsletter share caption.
- * Null when the board didn't move, so the caption stays the plain print line.
+ * Compact climber/slide sentence for share captions (newsletter and the
+ * national Monday print). Null when the board didn't move, so the caption
+ * stays the plain print line.
  */
 export function newsletterRankShareClause(
   shakeup: {

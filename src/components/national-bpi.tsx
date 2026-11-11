@@ -11,12 +11,15 @@ interface NationalBpiProps {
   cheapestCity?: string | null;
   /** Highest-BPI city name for share caption (optional). */
   mostExpensiveCity?: string | null;
+  /** Biggest climber/slide vs the prior print. Omitted when null. */
+  rankLine?: string | null;
 }
 
 export function NationalBpi({
   history,
   cheapestCity = null,
   mostExpensiveCity = null,
+  rankLine = null,
 }: NationalBpiProps) {
   if (history.length === 0) return null;
 
@@ -39,6 +42,7 @@ export function NationalBpi({
     cityCount: current.city_count,
     cheapestCity,
     mostExpensiveCity,
+    rankLine,
   });
 
   return (
