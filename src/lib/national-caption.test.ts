@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 import { buildBoardShakeup, buildBoardShakeupForWeek } from "./rank-ladder.ts";
 import {
   buildNationalCaption,
+  buildRankingsCaption,
   nationalShareUrl,
+  rankingsShareUrl,
   newsletterRankShareClause,
 } from "./share.ts";
 import type { BpiSnapshot, CityDashboardData } from "./types.ts";
@@ -200,5 +202,44 @@ describe("national share caption", { concurrency: false }, () => {
       { slug: "beta", name: "Beta", weeks: { "2026-11-09": 20 } },
     ]);
     assert.equal(weekClause(uneven, "2026-11-09"), null);
+  });
+});
+
+describe("buildRankingsCaption rank line", () => {
+  const base = {
+    weekOf: "2026-11-09",
+    avgBpi: 14.81,
+    changePct: 1.2,
+    cityCount: 10,
+    topCity: "New York",
+    topBpi: 21.04,
+    valueCity: "Austin",
+    valueBpi: 9.61,
+  };
+
+  it("adds the climber/slide clause before the coverage line", () => {
+    const caption = buildRankingsCaption({
+      ...base,
+      rankLine: "Portland climbed 3 to #7 and Boston slid 2 to #5.",
+    });
+    assert.match(
+      caption,
+      /Austin is the value trade at \$9\.61\. Portland climbed 3 to #7 and Boston slid 2 to #5\. 10 cities on the tape\./,
+    );
+    assert.ok(caption.endsWith(rankingsShareUrl()));
+  });
+
+  it("stays the plain board line when there is no movement", () => {
+    const plain = buildRankingsCaption(base);
+    assert.equal(buildRankingsCaption({ ...base, rankLine: null }), plain);
+    assert.equal(buildRankingsCaption({ ...base, rankLine: "  " }), plain);
+    assert.doesNotMatch(plain, /climbed|slid/);
+  });
+
+  it("drops the clause rather than exceed X's 280 limit", () => {
+    const long = `${"Very Long City Name ".repeat(12)}climbed 9 to #1.`;
+    const caption = buildRankingsCaption({ ...base, rankLine: long });
+    assert.equal(caption, buildRankingsCaption(base));
+    assert.ok(xLength(caption, rankingsShareUrl()) <= 280);
   });
 });

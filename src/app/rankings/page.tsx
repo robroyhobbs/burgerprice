@@ -12,6 +12,7 @@ import { ShareStrip } from "@/components/share-strip";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   buildRankingsCaption,
+  newsletterRankShareClause,
   rankingsOgPath,
   rankingsShareUrl,
 } from "@/lib/share";
@@ -337,6 +338,7 @@ export default async function RankingsPage() {
                 topBpi: highest?.bpi ?? null,
                 valueCity: lowest ? lowest.city.name : null,
                 valueBpi: lowest?.bpi ?? null,
+                rankLine: newsletterRankShareClause(shakeup),
               })}
               label="Share the leaderboard"
             />
