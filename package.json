@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "node --test src/lib/newsletter-board.test.ts src/lib/national-caption.test.ts",
     "seed": "npx tsx src/scripts/seed.ts"
   },
@@ -29,6 +29,8 @@
     "@types/node": "^25.2.3",
     "@types/pg": "^8.23.1",
     "@types/react": "^19.2.14",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.1.6",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"

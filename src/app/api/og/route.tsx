@@ -864,7 +864,7 @@ function AboutCard() {
         }}
       >
         <span style={{ display: "flex", fontSize: 16, color: "#6B7280" }}>
-          Bloomberg Terminal energy, Wendy's frostiness
+          {"Bloomberg Terminal energy, Wendy's frostiness"}
         </span>
         <span style={{ display: "flex", fontSize: 16, color: "#DAA520" }}>
           burgerprice.com/about

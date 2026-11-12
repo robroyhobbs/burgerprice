@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  type BarShapeProps,
 } from "recharts";
 import type { CityDashboardData } from "@/lib/types";
 import { useTheme } from "./theme-provider";
@@ -312,16 +313,17 @@ export function CandlestickChart({ cities }: CandlestickChartProps) {
               <Bar
                 key={cityData.city.slug}
                 dataKey={`${cityData.city.slug}_range`}
-                shape={
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  ((props: any) => (
-                    <CandleShape
-                      {...props}
-                      prefix={cityData.city.slug}
-                      colorIndex={i}
-                    />
-                  )) as any
-                }
+                shape={(props: BarShapeProps) => (
+                  <CandleShape
+                    x={props.x}
+                    y={props.y}
+                    width={props.width}
+                    height={props.height}
+                    payload={props.payload}
+                    prefix={cityData.city.slug}
+                    colorIndex={i}
+                  />
+                )}
                 isAnimationActive={false}
               />
             ))}
