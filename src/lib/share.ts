@@ -241,6 +241,11 @@ export function buildRankingsCaption(opts: {
   /** Lowest-BPI city (value trade). */
   valueCity?: string | null;
   valueBpi?: number | null;
+  /**
+   * Climber/slide sentence from newsletterRankShareClause.
+   * Omitted when null, blank, or when it would push the post over X's limit.
+   */
+  rankLine?: string | null;
 }): string {
   const week = formatWeekShort(opts.weekOf);
   const changeText =
@@ -265,7 +270,16 @@ export function buildRankingsCaption(opts: {
       ? ` ${opts.cityCount} cities on the tape.`
       : "";
 
-  return `BPI Rankings — week of ${week}. National $${opts.avgBpi.toFixed(2)}${changeText}.${board}${coverage} Full board: ${rankingsShareUrl()}`;
+  const url = rankingsShareUrl();
+  const lead = `BPI Rankings — week of ${week}. National $${opts.avgBpi.toFixed(2)}${changeText}.${board}`;
+  const tail = `${coverage} Full board: ${url}`;
+  const plain = `${lead}${tail}`;
+  const rank = opts.rankLine?.trim().replace(/\.+$/, "");
+  if (!rank) return plain;
+  const withClause = `${lead} ${rank}.${tail}`;
+  // Same 280 guard as the national caption: drop the clause, keep the board.
+  if (xPostLength(withClause, url) > X_POST_LIMIT) return plain;
+  return withClause;
 }
 
 
