@@ -73,6 +73,12 @@ export function buildCityCaption(opts: {
   totalCities?: number | null;
   /** National average BPI for comparison. */
   nationalAvg?: number | null;
+  /**
+   * Rank on the prior available print (RankLadder.prevRank / buildRankMovements).
+   * The movement clause is omitted when this is missing, equal to rank, or
+   * when adding it would push the post over X's limit.
+   */
+  prevRank?: number | null;
 }): string {
   const bpiText =
     opts.bpi == null ? "collecting data" : `$${opts.bpi.toFixed(2)}`;
@@ -81,20 +87,33 @@ export function buildCityCaption(opts: {
       ? ""
       : ` (${opts.changePct > 0 ? "+" : ""}${opts.changePct.toFixed(1)}% WoW)`;
 
-  const parts: string[] = [];
-  if (opts.rank != null && opts.rank > 0) {
-    const of =
-      opts.totalCities != null && opts.totalCities > 0
-        ? ` of ${opts.totalCities}`
-        : "";
-    parts.push(`ranks #${opts.rank}${of}`);
-  }
-  if (opts.nationalAvg != null && !Number.isNaN(opts.nationalAvg)) {
-    parts.push(`national prints $${opts.nationalAvg.toFixed(2)}`);
-  }
-  const context = parts.length > 0 ? ` — ${parts.join("; ")}.` : ".";
+  const rankCore =
+    opts.rank != null && opts.rank > 0
+      ? `ranks #${opts.rank}${
+          opts.totalCities != null && opts.totalCities > 0
+            ? ` of ${opts.totalCities}`
+            : ""
+        }`
+      : null;
 
-  return `${opts.name}, ${opts.state} BPI: ${bpiText}${changeText}${context} Bloomberg Terminal energy, Wendy's drive-thru prices — ${cityShareUrl(opts.slug)}`;
+  const url = cityShareUrl(opts.slug);
+  const sentence = (rankText: string | null) => {
+    const parts: string[] = [];
+    if (rankText) parts.push(rankText);
+    if (opts.nationalAvg != null && !Number.isNaN(opts.nationalAvg)) {
+      parts.push(`national prints $${opts.nationalAvg.toFixed(2)}`);
+    }
+    const context = parts.length > 0 ? ` — ${parts.join("; ")}.` : ".";
+    return `${opts.name}, ${opts.state} BPI: ${bpiText}${changeText}${context} Bloomberg Terminal energy, Wendy's drive-thru prices — ${url}`;
+  };
+
+  const plain = sentence(rankCore);
+  const move = rankCore ? cityRankMoveClause(opts.rank, opts.prevRank) : null;
+  if (!move || !rankCore) return plain;
+  const withClause = sentence(`${rankCore}, ${move}`);
+  // Same 280 guard as the national caption: drop the clause, keep the print.
+  if (xPostLength(withClause, url) > X_POST_LIMIT) return plain;
+  return withClause;
 }
 
 export function nationalShareUrl(): string {
@@ -183,6 +202,23 @@ export function newsletterOgPath(weekOf?: string): string {
 
 function rankMoveCount(spots: number): string {
   return spots === 1 ? "1 spot" : String(spots);
+}
+
+/**
+ * This city's own move vs the prior available print.
+ * "up 3 from #10" / "down 1 spot from #4". Null when the rank held or
+ * the prior rank is unknown, so the caption stays the plain print line.
+ */
+function cityRankMoveClause(
+  rank: number | null | undefined,
+  prevRank: number | null | undefined,
+): string | null {
+  if (rank == null || !(rank > 0)) return null;
+  if (prevRank == null || !(prevRank > 0)) return null;
+  const spots = Math.abs(prevRank - rank);
+  if (spots === 0) return null;
+  const direction = prevRank > rank ? "up" : "down";
+  return `${direction} ${rankMoveCount(spots)} from #${prevRank}`;
 }
 
 /**

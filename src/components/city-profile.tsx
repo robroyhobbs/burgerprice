@@ -183,6 +183,12 @@ export function CityProfile({
           rank,
           totalCities,
           nationalAvg,
+          // Ladder rank must be the rank this caption prints; otherwise the
+          // prior print isn't comparable and the clause stays off.
+          prevRank:
+            rankLadder != null && rankLadder.rank === rank
+              ? rankLadder.prevRank
+              : null,
         })}
         label="Share this city"
       />
