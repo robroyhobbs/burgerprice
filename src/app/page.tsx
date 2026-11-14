@@ -21,7 +21,7 @@ import { FindYourCity } from "@/components/find-your-city";
 import { Footer } from "@/components/footer";
 import { PrintDelayNotice } from "@/components/print-delay-notice";
 import { getShowdownIndices, parseShowdownPair } from "@/lib/showdown";
-import { buildBoardShakeupForWeek } from "@/lib/rank-ladder";
+import { buildBoardShakeupForWeek, buildRankMovements } from "@/lib/rank-ladder";
 import { newsletterRankShareClause, showdownOgPath } from "@/lib/share";
 import {
   buildFaqPageJsonLd,
@@ -185,6 +185,14 @@ export default async function Home({ searchParams }: HomeProps) {
     .filter((c) => c.currentSnapshot?.bpi_score != null)
     .map((c) => ({ slug: c.city.slug, name: c.city.name, state: c.city.state }))
     .sort((a, b) => a.name.localeCompare(b.name));
+  // Same prior-print rules as the city pages and the leaderboard arrows.
+  const rankMoves = buildRankMovements(data.cities);
+  const leftMove = showdownCities[0]
+    ? rankMoves.get(showdownCities[0].city.slug)
+    : undefined;
+  const rightMove = showdownCities[1]
+    ? rankMoves.get(showdownCities[1].city.slug)
+    : undefined;
 
   // For the trend chart, show the showdown pair
   const trendCities =
@@ -256,6 +264,10 @@ export default async function Home({ searchParams }: HomeProps) {
           weekOf={data.weekOf}
           pickerCities={pickerCities}
           isCustom={isCustomShowdown}
+          leftRank={leftMove?.rank ?? null}
+          leftPrevRank={leftMove?.prevRank ?? null}
+          rightRank={rightMove?.rank ?? null}
+          rightPrevRank={rightMove?.prevRank ?? null}
         />
 
         {/* Showdown FAQ — mirrors FAQPage JSON-LD */}

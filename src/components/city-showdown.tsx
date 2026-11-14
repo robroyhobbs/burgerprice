@@ -12,6 +12,14 @@ interface CityShowdownProps {
   pickerCities?: { slug: string; name: string; state: string }[];
   /** True when the pair came from a shared link rather than the weekly rotation. */
   isCustom?: boolean;
+  /**
+   * Current and prior-print ranks from buildRankMovements on the full board.
+   * Optional so a pair with no rank data keeps the original caption.
+   */
+  leftRank?: number | null;
+  leftPrevRank?: number | null;
+  rightRank?: number | null;
+  rightPrevRank?: number | null;
 }
 
 function formatWeekLabel(weekOf: string): string {
@@ -48,6 +56,10 @@ export function CityShowdown({
   weekOf,
   pickerCities,
   isCustom = false,
+  leftRank = null,
+  leftPrevRank = null,
+  rightRank = null,
+  rightPrevRank = null,
 }: CityShowdownProps) {
   if (cities.length < 2) return null;
 
@@ -69,6 +81,10 @@ export function CityShowdown({
     leftSlug: city1.city.slug,
     rightSlug: city2.city.slug,
     fresh,
+    leftRank,
+    leftPrevRank,
+    rightRank,
+    rightPrevRank,
   });
 
   return (
