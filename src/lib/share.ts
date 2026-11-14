@@ -44,6 +44,20 @@ export function buildShowdownCaption(opts: {
   rightSlug: string;
   /** When true, prefix caption with "NEW · " for Monday fresh-print ritual. */
   fresh?: boolean;
+  /**
+   * 1-based rank on the current board (buildRankMovements / RankLadder.rank).
+   * The whole rank clause is omitted when neither city has a rank, or when
+   * adding it (including the NEW · prefix) would push the post over X's limit.
+   */
+  leftRank?: number | null;
+  /**
+   * Rank on the prior available print (RankLadder.prevRank).
+   * A city with no prior rank prints its rank with no movement; a city that
+   * held its rank prints "(flat)".
+   */
+  leftPrevRank?: number | null;
+  rightRank?: number | null;
+  rightPrevRank?: number | null;
 }): string {
   const week = formatWeekShort(opts.weekOf);
   const gap = Math.abs(opts.leftBpi - opts.rightBpi);
@@ -57,8 +71,17 @@ export function buildShowdownCaption(opts: {
     leader == null
       ? "Locked at parity."
       : `${leader} leads by $${gap.toFixed(2)}.`;
-  const body = `${opts.leftName} ($${opts.leftBpi.toFixed(2)}) vs ${opts.rightName} ($${opts.rightBpi.toFixed(2)}) — week of ${week}. ${spread} Track it: ${showdownShareUrl(opts.leftSlug, opts.rightSlug)}`;
-  return opts.fresh ? `NEW · ${body}` : body;
+  const url = showdownShareUrl(opts.leftSlug, opts.rightSlug);
+  const lead = `${opts.leftName} ($${opts.leftBpi.toFixed(2)}) vs ${opts.rightName} ($${opts.rightBpi.toFixed(2)}) — week of ${week}. ${spread}`;
+  const tail = ` Track it: ${url}`;
+  const finish = (body: string) => (opts.fresh ? `NEW · ${body}` : body);
+  const plain = finish(`${lead}${tail}`);
+  const ranks = showdownRankClause(opts);
+  if (!ranks) return plain;
+  const withClause = finish(`${lead} ${ranks}${tail}`);
+  // Same 280 guard as the city caption. The fresh prefix counts; the URL counts as 23.
+  if (xPostLength(withClause, url) > X_POST_LIMIT) return plain;
+  return withClause;
 }
 
 export function buildCityCaption(opts: {
@@ -205,6 +228,28 @@ function rankMoveCount(spots: number): string {
 }
 
 /**
+ * This city's move vs the prior available print.
+ * Null when the rank or the prior rank is unknown. "flat" when the rank held.
+ */
+function rankStep(
+  rank: number | null | undefined,
+  prevRank: number | null | undefined,
+):
+  | { kind: "up" | "down"; spots: number; prevRank: number }
+  | { kind: "flat" }
+  | null {
+  if (rank == null || !(rank > 0)) return null;
+  if (prevRank == null || !(prevRank > 0)) return null;
+  const spots = Math.abs(prevRank - rank);
+  if (spots === 0) return { kind: "flat" };
+  return {
+    kind: prevRank > rank ? "up" : "down",
+    spots,
+    prevRank,
+  };
+}
+
+/**
  * This city's own move vs the prior available print.
  * "up 3 from #10" / "down 1 spot from #4". Null when the rank held or
  * the prior rank is unknown, so the caption stays the plain print line.
@@ -213,12 +258,38 @@ function cityRankMoveClause(
   rank: number | null | undefined,
   prevRank: number | null | undefined,
 ): string | null {
+  const step = rankStep(rank, prevRank);
+  if (!step || step.kind === "flat") return null;
+  return `${step.kind} ${rankMoveCount(step.spots)} from #${step.prevRank}`;
+}
+
+/** "Portland #7 (up 3)" / "Boston #5 (flat)" / "Boston #5" when prior is unknown. */
+function showdownCityRankBit(
+  name: string,
+  rank: number | null | undefined,
+  prevRank: number | null | undefined,
+): string | null {
   if (rank == null || !(rank > 0)) return null;
-  if (prevRank == null || !(prevRank > 0)) return null;
-  const spots = Math.abs(prevRank - rank);
-  if (spots === 0) return null;
-  const direction = prevRank > rank ? "up" : "down";
-  return `${direction} ${rankMoveCount(spots)} from #${prevRank}`;
+  const step = rankStep(rank, prevRank);
+  if (!step) return `${name} #${rank}`;
+  if (step.kind === "flat") return `${name} #${rank} (flat)`;
+  return `${name} #${rank} (${step.kind} ${rankMoveCount(step.spots)})`;
+}
+
+function showdownRankClause(opts: {
+  leftName: string;
+  leftRank?: number | null;
+  leftPrevRank?: number | null;
+  rightName: string;
+  rightRank?: number | null;
+  rightPrevRank?: number | null;
+}): string | null {
+  const bits = [
+    showdownCityRankBit(opts.leftName, opts.leftRank, opts.leftPrevRank),
+    showdownCityRankBit(opts.rightName, opts.rightRank, opts.rightPrevRank),
+  ].filter((bit): bit is string => bit != null);
+  if (bits.length === 0) return null;
+  return `Ranks: ${bits.join(", ")}.`;
 }
 
 /**
