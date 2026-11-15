@@ -211,3 +211,101 @@ export function buildBoardShakeupForWeek(
 ): BoardShakeupData | null {
   return buildBoardShakeup(citiesAsOfPrint(cities, weekOf));
 }
+
+/** Recent prints the rank range looks back across. */
+const RANK_RANGE_PRINTS = 12;
+/** Fewer than this and the range line would just restate the movement note. */
+const RANK_RANGE_MIN_PRINTS = 3;
+
+interface RankedPrint {
+  weekOf: string;
+  rank: number;
+}
+
+/**
+ * One city's rank on each print it actually has, oldest first.
+ *
+ * The week's board is replayed through buildRankLadder, so the sort and tie
+ * order match the live ladder. A week with fewer cities is ranked among the
+ * cities that printed. Weeks with no stored print (the Oct 5 / Oct 26 gaps)
+ * are not invented, and a week this city sat out is not one of its prints.
+ */
+function cityRankPrints(
+  cities: CityDashboardData[],
+  slug: string,
+): RankedPrint[] {
+  const city = cities.find((c) => c.city.slug === slug);
+  if (!city) return [];
+
+  const weeks = new Set<string>();
+  for (const snap of city.history ?? []) {
+    if (snap.bpi_score == null) continue;
+    const week = weekKey(snap.week_of);
+    if (week) weeks.add(week);
+  }
+
+  const prints: RankedPrint[] = [];
+  for (const week of [...weeks].sort()) {
+    const ladder = buildRankLadder(citiesAsOfPrint(cities, week), slug);
+    if (!ladder) continue;
+    prints.push({ weekOf: week, rank: ladder.rank });
+  }
+  return prints;
+}
+
+/** Same short label as formatTapeWeek ("Sep 14"). Local so node:test can load this module. */
+function formatRankWeek(weekOf: string): string {
+  const day = weekOf.slice(0, 10);
+  const d = new Date(`${day}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return day;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/**
+ * Rank streak and 12-print range for the city page.
+ *
+ * Streak walks available prints backward from the latest and stops when the
+ * rank changes. A streak of 1 is omitted — the movement line already says it.
+ * Range is skipped until there are 3 prints. Best (lowest number) and worst
+ * cite the most recent week that hit them; on a flat window the oldest print
+ * is the other end so the two weeks aren't the same day.
+ * Returns null when there is nothing extra to say.
+ */
+export function buildRankHistoryLine(
+  cities: CityDashboardData[],
+  slug: string,
+): string | null {
+  const prints = cityRankPrints(cities, slug);
+  if (prints.length === 0) return null;
+
+  const newestFirst = [...prints].reverse();
+  const currentRank = newestFirst[0].rank;
+  let streak = 0;
+  for (const print of newestFirst) {
+    if (print.rank !== currentRank) break;
+    streak += 1;
+  }
+
+  const parts: string[] = [];
+  if (streak >= 2) {
+    parts.push(`Held #${currentRank} for ${streak} straight prints.`);
+  }
+
+  if (prints.length >= RANK_RANGE_MIN_PRINTS) {
+    const window = newestFirst.slice(0, RANK_RANGE_PRINTS);
+    let best = window[0];
+    let worst = window[0];
+    for (const print of window) {
+      if (print.rank < best.rank) best = print;
+      if (print.rank > worst.rank) worst = print;
+    }
+    if (best.weekOf === worst.weekOf) {
+      worst = window[window.length - 1];
+    }
+    parts.push(
+      `Last ${window.length} prints: best #${best.rank} (week of ${formatRankWeek(best.weekOf)}), worst #${worst.rank} (week of ${formatRankWeek(worst.weekOf)}).`,
+    );
+  }
+
+  return parts.length > 0 ? parts.join(" ") : null;
+}
