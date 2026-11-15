@@ -74,11 +74,15 @@ function Neighbor({
 export function RankLadderBlock({
   ladder,
   cityName,
+  historyLine = null,
 }: {
   ladder: RankLadder;
   cityName: string;
+  /** Streak and range from buildRankHistoryLine. Null when there is nothing extra to say. */
+  historyLine?: string | null;
 }) {
   const week = ladder.weekOf ? formatTapeWeek(ladder.weekOf) : null;
+  const movement = movementNote(ladder);
   return (
     <section
       className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-6 mb-8"
@@ -101,10 +105,13 @@ export function RankLadderBlock({
         </span>
         <span className="text-sm text-gray-400 ml-2">priciest first</span>
       </p>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <p className={`text-sm text-gray-500 dark:text-gray-400 ${historyLine ? "mb-2" : "mb-4"}`}>
         {ordinalNote(ladder)}
-        {movementNote(ladder) ? ` ${movementNote(ladder)}` : ""}
+        {movement ? ` ${movement}` : ""}
       </p>
+      {historyLine ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{historyLine}</p>
+      ) : null}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Neighbor
           label="Next pricier"

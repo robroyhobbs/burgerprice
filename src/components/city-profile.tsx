@@ -42,6 +42,7 @@ interface CityProfileProps {
   peerCities?: PeerCity[];
   tierStandings?: Partial<Record<PriceTier, CityTierStanding>>;
   rankLadder?: RankLadder | null;
+  rankHistoryLine?: string | null;
 }
 
 function findWebsite(name: string, prices: RawPrice[]): string | null {
@@ -57,6 +58,7 @@ export function CityProfile({
   peerCities = [],
   tierStandings = {},
   rankLadder = null,
+  rankHistoryLine = null,
 }: CityProfileProps) {
   const { city, currentSnapshot, spotlight } = data;
   const bpi = currentSnapshot?.bpi_score ?? null;
@@ -556,7 +558,11 @@ export function CityProfile({
 
       {/* Where it ranks — neighbors on the board */}
       {rankLadder && (
-        <RankLadderBlock ladder={rankLadder} cityName={city.name} />
+        <RankLadderBlock
+          ladder={rankLadder}
+          cityName={city.name}
+          historyLine={rankHistoryLine}
+        />
       )}
 
       {/* Peer cities (closest BPI) */}
