@@ -266,9 +266,10 @@ function formatRankWeek(weekOf: string): string {
  *
  * Streak walks available prints backward from the latest and stops when the
  * rank changes. A streak of 1 is omitted — the movement line already says it.
- * Range is skipped until there are 3 prints. Best (lowest number) and worst
- * cite the most recent week that hit them; on a flat window the oldest print
- * is the other end so the two weeks aren't the same day.
+ * Range is skipped until there are 3 prints, and omitted when best and worst
+ * are the same rank. A flat window already implies a streak at least as long
+ * as the window (and the window is at least 3), so the streak sentence covers
+ * it. Best (lowest number) and worst cite the most recent week that hit them.
  * Returns null when there is nothing extra to say.
  */
 export function buildRankHistoryLine(
@@ -299,12 +300,11 @@ export function buildRankHistoryLine(
       if (print.rank < best.rank) best = print;
       if (print.rank > worst.rank) worst = print;
     }
-    if (best.weekOf === worst.weekOf) {
-      worst = window[window.length - 1];
+    if (best.rank !== worst.rank) {
+      parts.push(
+        `Last ${window.length} prints: best #${best.rank} (week of ${formatRankWeek(best.weekOf)}), worst #${worst.rank} (week of ${formatRankWeek(worst.weekOf)}).`,
+      );
     }
-    parts.push(
-      `Last ${window.length} prints: best #${best.rank} (week of ${formatRankWeek(best.weekOf)}), worst #${worst.rank} (week of ${formatRankWeek(worst.weekOf)}).`,
-    );
   }
 
   return parts.length > 0 ? parts.join(" ") : null;
