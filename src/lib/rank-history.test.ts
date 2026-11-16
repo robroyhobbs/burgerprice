@@ -65,7 +65,7 @@ const FOURTEEN = [
 ];
 
 describe("buildRankHistoryLine", () => {
-  it("counts a streak across calendar gaps and names both ends of a flat range", () => {
+  it("counts a streak across calendar gaps and omits a flat range", () => {
     // 2026-09-21 and 2026-10-05 are missing on purpose. They are not prints.
     const cities = board([
       {
@@ -93,10 +93,8 @@ describe("buildRankHistoryLine", () => {
     ]);
 
     const line = buildRankHistoryLine(cities, "alpha");
-    assert.equal(
-      line,
-      `Held #1 for 5 straight prints. Last 5 prints: best #1 (week of ${formatTapeWeek("2026-10-19")}), worst #1 (week of ${formatTapeWeek("2026-09-07")}).`,
-    );
+    assert.equal(line, "Held #1 for 5 straight prints.");
+    assert.equal(/Last \d+ prints/.test(line ?? ""), false);
     assert.equal(line?.includes("Sep 21"), false);
     assert.equal(line?.includes("Oct 5"), false);
     assert.equal(buildRankLadder(cities, "alpha")?.rank, 1);
@@ -173,11 +171,13 @@ describe("buildRankHistoryLine", () => {
     assert.equal(buildRankHistoryLine(cities, "missing"), null);
   });
 
-  it("limits the range to the last 12 prints and lets the streak run longer", () => {
+  it("lets the streak run longer than a flat 12-print window", () => {
     const alpha: Record<string, number> = {};
     const beta: Record<string, number> = {};
     for (const [i, week] of FOURTEEN.entries()) {
-      // Oldest week alpha is #1. Every later week alpha is #2.
+      // Oldest week alpha is #1 and sits outside the 12-print window.
+      // Every later week is #2, so the window is flat and the range is omitted.
+      // Counting that oldest week would name a best of #1.
       alpha[week] = i === 0 ? 30 : 10;
       beta[week] = i === 0 ? 10 : 20;
     }
@@ -188,7 +188,7 @@ describe("buildRankHistoryLine", () => {
 
     assert.equal(
       buildRankHistoryLine(cities, "alpha"),
-      `Held #2 for 13 straight prints. Last 12 prints: best #2 (week of ${formatTapeWeek("2026-04-06")}), worst #2 (week of ${formatTapeWeek("2026-01-19")}).`,
+      "Held #2 for 13 straight prints.",
     );
   });
 
@@ -238,10 +238,9 @@ describe("buildRankHistoryLine", () => {
       },
     ]);
     assert.equal(buildRankLadder(cities, "second")?.rank, 2);
-    assert.equal(
-      buildRankHistoryLine(cities, "second"),
-      `Held #2 for 3 straight prints. Last 3 prints: best #2 (week of ${formatTapeWeek("2026-05-18")}), worst #2 (week of ${formatTapeWeek("2026-05-04")}).`,
-    );
+    const line = buildRankHistoryLine(cities, "second");
+    assert.equal(line, "Held #2 for 3 straight prints.");
+    assert.equal(/Last \d+ prints/.test(line ?? ""), false);
   });
 
   it("treats a timestamped week_of as the same print as a date", () => {
@@ -280,7 +279,7 @@ describe("buildRankHistoryLine", () => {
     assert.equal(buildRankLadder(cities, "alpha")?.rank, 2);
     assert.equal(
       buildRankHistoryLine(cities, "alpha"),
-      `Held #1 for 3 straight prints. Last 3 prints: best #1 (week of ${formatTapeWeek("2026-08-17")}), worst #1 (week of ${formatTapeWeek("2026-08-03")}).`,
+      "Held #1 for 3 straight prints.",
     );
     cities[0].history = [];
     assert.equal(buildRankHistoryLine(cities, "alpha"), null);
