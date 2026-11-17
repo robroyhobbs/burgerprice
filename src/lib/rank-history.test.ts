@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { formatTapeWeek } from "./city-readout.ts";
-import { buildRankHistoryLine, buildRankLadder } from "./rank-ladder.ts";
+import {
+  buildBottomStreak,
+  buildLongestStreak,
+  buildRankHistoryLine,
+  buildRankLadder,
+} from "./rank-ladder.ts";
 import type { BpiSnapshot, CityDashboardData } from "./types.ts";
 
 function snapshot(slug: string, week: string, bpi: number): BpiSnapshot {
@@ -283,5 +288,223 @@ describe("buildRankHistoryLine", () => {
     );
     cities[0].history = [];
     assert.equal(buildRankHistoryLine(cities, "alpha"), null);
+  });
+});
+
+describe("buildLongestStreak", () => {
+  it("picks the longest streak and does not invent a gap week", () => {
+    // 2026-09-21 is missing on purpose. It is not a print.
+    const cities = board([
+      {
+        slug: "alpha",
+        name: "Alpha",
+        weeks: {
+          "2026-09-07": 10, // #2
+          "2026-09-14": 40, // #1
+          "2026-09-28": 40,
+          "2026-10-12": 40,
+          "2026-10-19": 40,
+        },
+      },
+      {
+        slug: "beta",
+        name: "Beta",
+        weeks: {
+          "2026-09-07": 30, // #1
+          "2026-09-14": 20,
+          "2026-09-28": 20,
+          "2026-10-12": 20,
+          "2026-10-19": 20,
+        },
+      },
+      {
+        slug: "gamma",
+        name: "Gamma",
+        weeks: {
+          "2026-09-07": 5,
+          "2026-09-14": 5,
+          "2026-09-28": 5,
+          "2026-10-12": 5,
+          "2026-10-19": 5,
+        },
+      },
+    ]);
+
+    assert.deepEqual(buildLongestStreak(cities), {
+      slug: "gamma",
+      name: "Gamma",
+      state: "XX",
+      rank: 3,
+      streak: 5,
+    });
+    assert.equal(
+      buildRankHistoryLine(cities, "gamma"),
+      "Held #3 for 5 straight prints.",
+    );
+    assert.equal(buildRankHistoryLine(cities, "gamma")?.includes("Sep 21"), false);
+  });
+
+  it("breaks equal streaks toward the higher-ranked city, not input order", () => {
+    const cities = board([
+      {
+        slug: "gamma",
+        name: "Gamma",
+        weeks: { "2026-05-04": 5, "2026-05-11": 5, "2026-05-18": 5 },
+      },
+      {
+        slug: "beta",
+        name: "Beta",
+        weeks: { "2026-05-04": 10, "2026-05-11": 10, "2026-05-18": 10 },
+      },
+      {
+        slug: "alpha",
+        name: "Alpha",
+        weeks: { "2026-05-04": 20, "2026-05-11": 20, "2026-05-18": 20 },
+      },
+    ]);
+
+    assert.deepEqual(buildLongestStreak(cities), {
+      slug: "alpha",
+      name: "Alpha",
+      state: "XX",
+      rank: 1,
+      streak: 3,
+    });
+  });
+
+  it("uses the live ladder's tie order when BPIs match", () => {
+    const cities = board([
+      {
+        slug: "first",
+        name: "First",
+        weeks: { "2026-05-04": 10, "2026-05-11": 10, "2026-05-18": 10 },
+      },
+      {
+        slug: "second",
+        name: "Second",
+        weeks: { "2026-05-04": 10, "2026-05-11": 10, "2026-05-18": 10 },
+      },
+    ]);
+
+    assert.equal(buildRankLadder(cities, "second")?.rank, 2);
+    assert.equal(buildLongestStreak(cities)?.slug, "first");
+    assert.equal(buildLongestStreak(cities)?.rank, 1);
+    assert.deepEqual(buildBottomStreak(cities), {
+      slug: "second",
+      name: "Second",
+      state: "XX",
+      rank: 2,
+      streak: 3,
+    });
+  });
+
+  it("returns null when no city has held its rank for 2 prints", () => {
+    const swapped = board([
+      { slug: "alpha", name: "Alpha", weeks: { "2026-11-02": 20, "2026-11-09": 10 } },
+      { slug: "beta", name: "Beta", weeks: { "2026-11-02": 10, "2026-11-09": 20 } },
+    ]);
+    assert.equal(buildLongestStreak(swapped), null);
+    assert.equal(buildBottomStreak(swapped), null);
+    assert.equal(
+      buildLongestStreak(
+        board([{ slug: "alpha", name: "Alpha", weeks: { "2026-11-09": 10 } }]),
+      ),
+      null,
+    );
+    assert.equal(buildLongestStreak([]), null);
+  });
+
+  it("ignores a streak that stopped before the latest print", () => {
+    const cities = board([
+      {
+        slug: "old",
+        name: "Old",
+        weeks: {
+          "2026-01-05": 40,
+          "2026-01-12": 40,
+          "2026-01-19": 40,
+          "2026-01-26": 40,
+        },
+      },
+      {
+        slug: "now",
+        name: "Now",
+        weeks: {
+          "2026-01-05": 20,
+          "2026-01-12": 20,
+          "2026-01-19": 20,
+          "2026-01-26": 20,
+          "2026-02-02": 20,
+        },
+      },
+      {
+        slug: "cheap",
+        name: "Cheap",
+        weeks: {
+          "2026-01-05": 5,
+          "2026-01-12": 5,
+          "2026-01-19": 5,
+          "2026-01-26": 5,
+          "2026-02-02": 5,
+        },
+      },
+    ]);
+
+    // Old's own page still cites the four-print reign. The board does not:
+    // Old sat out the latest print, and the cities that did print just moved.
+    assert.equal(
+      buildRankHistoryLine(cities, "old"),
+      "Held #1 for 4 straight prints.",
+    );
+    assert.equal(buildLongestStreak(cities), null);
+    assert.equal(buildBottomStreak(cities), null);
+  });
+
+  it("names last place when that rank has been held, and skips a fresh bottom", () => {
+    const held = board([
+      {
+        slug: "alpha",
+        name: "Alpha",
+        weeks: { "2026-04-06": 30, "2026-04-13": 30, "2026-04-20": 30 },
+      },
+      {
+        slug: "beta",
+        name: "Beta",
+        weeks: { "2026-04-06": 20, "2026-04-13": 20, "2026-04-20": 20 },
+      },
+      {
+        slug: "gamma",
+        name: "Gamma",
+        weeks: { "2026-04-06": 10, "2026-04-13": 10, "2026-04-20": 10 },
+      },
+    ]);
+    assert.equal(buildLongestStreak(held)?.slug, "alpha");
+    assert.deepEqual(buildBottomStreak(held), {
+      slug: "gamma",
+      name: "Gamma",
+      state: "XX",
+      rank: 3,
+      streak: 3,
+    });
+
+    const freshBottom = board([
+      {
+        slug: "alpha",
+        name: "Alpha",
+        weeks: { "2026-04-06": 40, "2026-04-13": 40, "2026-04-20": 40 },
+      },
+      {
+        slug: "beta",
+        name: "Beta",
+        weeks: { "2026-04-06": 20, "2026-04-13": 20, "2026-04-20": 10 },
+      },
+      {
+        slug: "gamma",
+        name: "Gamma",
+        weeks: { "2026-04-06": 10, "2026-04-13": 10, "2026-04-20": 20 },
+      },
+    ]);
+    assert.equal(buildLongestStreak(freshBottom)?.slug, "alpha");
+    assert.equal(buildBottomStreak(freshBottom), null);
   });
 });

@@ -262,6 +262,37 @@ function formatRankWeek(weekOf: string): string {
 }
 
 /**
+ * Walk available prints backward from the latest and stop when the rank
+ * changes. `newestFirst` is the city's own prints, latest first. Gap weeks
+ * are already absent — they are not prints and do not break or extend this.
+ */
+function countCurrentStreak(newestFirst: RankedPrint[]): {
+  rank: number;
+  streak: number;
+} {
+  const rank = newestFirst[0].rank;
+  let streak = 0;
+  for (const print of newestFirst) {
+    if (print.rank !== rank) break;
+    streak += 1;
+  }
+  return { rank, streak };
+}
+
+/** Newest week any city actually printed. Empty weeks are not a print. */
+function latestPrintWeek(cities: CityDashboardData[]): string | null {
+  let latest = "";
+  for (const city of cities) {
+    for (const snap of city.history ?? []) {
+      if (snap.bpi_score == null) continue;
+      const week = weekKey(snap.week_of);
+      if (week > latest) latest = week;
+    }
+  }
+  return latest || null;
+}
+
+/**
  * Rank streak and 12-print range for the city page.
  *
  * Streak walks available prints backward from the latest and stops when the
@@ -280,12 +311,7 @@ export function buildRankHistoryLine(
   if (prints.length === 0) return null;
 
   const newestFirst = [...prints].reverse();
-  const currentRank = newestFirst[0].rank;
-  let streak = 0;
-  for (const print of newestFirst) {
-    if (print.rank !== currentRank) break;
-    streak += 1;
-  }
+  const { rank: currentRank, streak } = countCurrentStreak(newestFirst);
 
   const parts: string[] = [];
   if (streak >= 2) {
@@ -308,4 +334,80 @@ export function buildRankHistoryLine(
   }
 
   return parts.length > 0 ? parts.join(" ") : null;
+}
+
+export interface RankStreak {
+  slug: string;
+  name: string;
+  state: string;
+  rank: number;
+  streak: number;
+}
+
+/**
+ * Current streaks for cities that printed the latest week.
+ *
+ * The walk is countCurrentStreak — the same one buildRankHistoryLine uses —
+ * so the rank and the print count match that city's page. A city that sat
+ * out the latest print is not holding a rank on this board.
+ */
+function collectCurrentStreaks(cities: CityDashboardData[]): RankStreak[] {
+  const latest = latestPrintWeek(cities);
+  if (!latest) return [];
+
+  const streaks: RankStreak[] = [];
+  for (const city of cities) {
+    const prints = cityRankPrints(cities, city.city.slug);
+    if (prints.length === 0 || prints[prints.length - 1].weekOf !== latest) {
+      continue;
+    }
+    const { rank, streak } = countCurrentStreak([...prints].reverse());
+    streaks.push({
+      slug: city.city.slug,
+      name: city.city.name,
+      state: city.city.state,
+      rank,
+      streak,
+    });
+  }
+  return streaks;
+}
+
+/** Longer streak, then the higher-ranked (pricier) city, then slug. */
+function streakOutranks(a: RankStreak, b: RankStreak): boolean {
+  if (a.streak !== b.streak) return a.streak > b.streak;
+  if (a.rank !== b.rank) return a.rank < b.rank;
+  return a.slug < b.slug;
+}
+
+/**
+ * City with the longest current rank streak. Ties go to the higher-ranked
+ * (pricier) city. Null when the best streak is shorter than 2 prints — a
+ * one-print hold is just this week's rank.
+ */
+export function buildLongestStreak(
+  cities: CityDashboardData[],
+): RankStreak | null {
+  let best: RankStreak | null = null;
+  for (const streak of collectCurrentStreaks(cities)) {
+    if (streak.streak < 2) continue;
+    if (!best || streakOutranks(streak, best)) best = streak;
+  }
+  return best;
+}
+
+/**
+ * City in last place on the latest print, when they have held that rank for
+ * at least 2 available prints. Same walk as buildLongestStreak. Null when
+ * the bottom spot just changed hands.
+ */
+export function buildBottomStreak(
+  cities: CityDashboardData[],
+): RankStreak | null {
+  let bottom: RankStreak | null = null;
+  for (const streak of collectCurrentStreaks(cities)) {
+    if (!bottom || streak.rank > bottom.rank) bottom = streak;
+  }
+  if (!bottom || bottom.streak < 2) return null;
+  return bottom;
 }

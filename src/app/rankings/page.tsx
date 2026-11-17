@@ -18,7 +18,13 @@ import {
 } from "@/lib/share";
 import type { CityDashboardData } from "@/lib/types";
 import { buildTierLeaderboards, type TierLeaderboard } from "@/lib/restaurant-utils";
-import { buildBoardShakeup, type BoardShakeupData } from "@/lib/rank-ladder";
+import {
+  buildBoardShakeup,
+  buildBottomStreak,
+  buildLongestStreak,
+  type BoardShakeupData,
+  type RankStreak,
+} from "@/lib/rank-ladder";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -206,6 +212,8 @@ export default async function RankingsPage() {
   );
 
   const shakeup = buildBoardShakeup(cities);
+  const longestReign = shakeup ? buildLongestStreak(cities) : null;
+  const bottomReign = shakeup ? buildBottomStreak(cities) : null;
 
   const jsonLd = buildJsonLd(ranked, weekOf);
   const natUp = nationalChange !== null && nationalChange > 0;
@@ -322,7 +330,13 @@ export default async function RankingsPage() {
             </div>
           </div>
 
-          {shakeup && <BoardShakeup shakeup={shakeup} />}
+          {shakeup && (
+            <BoardShakeup
+              shakeup={shakeup}
+              longest={longestReign}
+              bottom={bottomReign}
+            />
+          )}
         </section>
 
         {nationalCurrent && weekOf && (
@@ -498,13 +512,24 @@ function TierRow({
   );
 }
 
-function BoardShakeup({ shakeup }: { shakeup: BoardShakeupData }) {
+function BoardShakeup({
+  shakeup,
+  longest,
+  bottom,
+}: {
+  shakeup: BoardShakeupData;
+  longest: RankStreak | null;
+  bottom: RankStreak | null;
+}) {
   const since = new Date(shakeup.prevWeekOf + "T00:00:00").toLocaleDateString(
     "en-US",
     { month: "short", day: "numeric" },
   );
   const { climber, slider, held, total } = shakeup;
   const spots = (n: number) => `${n} ${n === 1 ? "spot" : "spots"}`;
+  const showBottom = Boolean(
+    longest && bottom && bottom.slug !== longest.slug,
+  );
   return (
     <div
       className="mt-4 bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter px-5 py-4"
@@ -550,6 +575,31 @@ function BoardShakeup({ shakeup }: { shakeup: BoardShakeupData }) {
           No rank changes. All {total} cities held their spot.
         </p>
       )}
+      {longest ? (
+        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mt-1">
+          Longest reign:{" "}
+          <Link
+            href={`/cities/${longest.slug}`}
+            className="font-medium text-gray-900 dark:text-white hover:text-ketchup dark:hover:text-mustard"
+          >
+            {longest.name}
+          </Link>
+          , #{longest.rank} for {longest.streak} straight prints.
+          {showBottom && bottom ? (
+            <>
+              {" "}
+              Steadiest bottom:{" "}
+              <Link
+                href={`/cities/${bottom.slug}`}
+                className="font-medium text-gray-900 dark:text-white hover:text-ketchup dark:hover:text-mustard"
+              >
+                {bottom.name}
+              </Link>
+              , #{bottom.rank} for {bottom.streak} prints.
+            </>
+          ) : null}
+        </p>
+      ) : null}
     </div>
   );
 }
