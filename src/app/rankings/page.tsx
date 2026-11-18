@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import { getAllCities, getNationalBpiHistory } from "@/lib/data";
 import { buildBreadcrumbJsonLd, getSiteBaseUrl } from "@/lib/json-ld";
@@ -17,6 +18,11 @@ import {
   rankingsShareUrl,
 } from "@/lib/share";
 import type { CityDashboardData } from "@/lib/types";
+import {
+  findRecordPrints,
+  recordPrintTokens,
+  type CityRecordPrint,
+} from "@/lib/city-readout";
 import { buildTierLeaderboards, type TierLeaderboard } from "@/lib/restaurant-utils";
 import {
   buildBoardShakeup,
@@ -214,6 +220,7 @@ export default async function RankingsPage() {
   const shakeup = buildBoardShakeup(cities);
   const longestReign = shakeup ? buildLongestStreak(cities) : null;
   const bottomReign = shakeup ? buildBottomStreak(cities) : null;
+  const records = findRecordPrints(cities);
 
   const jsonLd = buildJsonLd(ranked, weekOf);
   const natUp = nationalChange !== null && nationalChange > 0;
@@ -335,6 +342,7 @@ export default async function RankingsPage() {
               shakeup={shakeup}
               longest={longestReign}
               bottom={bottomReign}
+              records={records}
             />
           )}
         </section>
@@ -516,10 +524,12 @@ function BoardShakeup({
   shakeup,
   longest,
   bottom,
+  records,
 }: {
   shakeup: BoardShakeupData;
   longest: RankStreak | null;
   bottom: RankStreak | null;
+  records: { highs: CityRecordPrint[]; lows: CityRecordPrint[] };
 }) {
   const since = new Date(shakeup.prevWeekOf + "T00:00:00").toLocaleDateString(
     "en-US",
@@ -600,6 +610,36 @@ function BoardShakeup({
           ) : null}
         </p>
       ) : null}
+      <RecordPrintLine direction="high" cities={records.highs} />
+      <RecordPrintLine direction="low" cities={records.lows} />
     </div>
+  );
+}
+
+function RecordPrintLine({
+  direction,
+  cities,
+}: {
+  direction: "high" | "low";
+  cities: CityRecordPrint[];
+}) {
+  const tokens = recordPrintTokens(direction, cities);
+  if (!tokens) return null;
+  return (
+    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mt-1">
+      {tokens.map((token, i) =>
+        token.type === "city" ? (
+          <Link
+            key={token.slug}
+            href={`/cities/${token.slug}`}
+            className="font-medium text-gray-900 dark:text-white hover:text-ketchup dark:hover:text-mustard"
+          >
+            {token.name}
+          </Link>
+        ) : (
+          <Fragment key={`${token.type}-${i}`}>{token.text}</Fragment>
+        ),
+      )}
+    </p>
   );
 }

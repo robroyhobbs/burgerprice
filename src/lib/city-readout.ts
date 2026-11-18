@@ -67,11 +67,41 @@ export interface TapePrint {
   changePct: number | null;
 }
 
-type SnapshotLike = {
+export type SnapshotLike = {
   week_of: string;
   bpi_score: number;
   change_pct: number | null;
 };
+
+function weekKey(weekOf: string): string {
+  return String(weekOf ?? "").slice(0, 10);
+}
+
+/**
+ * Valid prints, oldest week first. The trading range and the record check
+ * both read this series: finite, positive BPI. Does not mutate history.
+ * Ties on a week keep input order, so the later row is the latest print.
+ */
+export function selectTrackedPrints(
+  history: readonly SnapshotLike[] | null | undefined,
+): SnapshotLike[] {
+  return (history ?? [])
+    .filter(
+      (s) =>
+        Number.isFinite(s.bpi_score) &&
+        s.bpi_score > 0 &&
+        weekKey(s.week_of).length > 0,
+    )
+    .sort((a, b) => weekKey(a.week_of).localeCompare(weekKey(b.week_of)));
+}
+
+/** Month tracking began, e.g. "Dec 2025". */
+export function formatTrackingBegan(weekOf: string): string {
+  const day = weekKey(weekOf);
+  const d = new Date(`${day}T00:00:00`);
+  if (!day || Number.isNaN(d.getTime())) return day || weekOf;
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
 
 /**
  * Last N weeks from ascending snapshot history (same series the chart uses).
@@ -156,13 +186,12 @@ export interface TradingRange {
 /**
  * Low / high / current across every tracked week. Ties resolve to the most
  * recent week so "fresh high" reads correctly. Needs 3+ valid prints.
+ * Uses selectTrackedPrints, the same series classifyRecordPrint reads.
  */
 export function buildTradingRange(
-  history: SnapshotLike[],
+  history: SnapshotLike[] | null | undefined,
 ): TradingRange | null {
-  const prints = (history ?? []).filter(
-    (s) => Number.isFinite(s.bpi_score) && s.bpi_score > 0,
-  );
+  const prints = selectTrackedPrints(history);
   if (prints.length < 3) return null;
 
   let low = prints[0];
@@ -194,10 +223,7 @@ export function buildTradingRangeStory(
 ): string {
   const lastIsHigh = r.last.weekOf === r.high.weekOf;
   const lastIsLow = r.last.weekOf === r.low.weekOf;
-  const d = new Date(r.firstWeekOf + "T00:00:00");
-  const since = Number.isNaN(d.getTime())
-    ? r.firstWeekOf
-    : d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const since = formatTrackingBegan(r.firstWeekOf);
   if (lastIsHigh) {
     return `${cityName} is printing its highest burger since tracking began ${since}. Record territory, and not the fun kind.`;
   }
@@ -211,4 +237,197 @@ export function buildTradingRangeStory(
     return `${cityName} sits ${r.offLowPct.toFixed(1)}% above its ${formatTapeWeek(r.low.weekOf)} low: near the bottom of its range.`;
   }
   return `${cityName} sits mid-range: ${r.offHighPct.toFixed(1)}% off the high, ${r.offLowPct.toFixed(1)}% above the low.`;
+}
+
+/**
+ * Prior tracked weeks required before a print can set a record.
+ * A new city's first prints are not records.
+ */
+export const RECORD_MIN_PRIOR_WEEKS = 8;
+
+export interface RecordPrint {
+  direction: "high" | "low";
+  bpi: number;
+  weekOf: string;
+  /** Extreme among earlier weeks only. */
+  priorExtreme: number;
+  priorWeeks: number;
+  /** First tracked week in the series. */
+  firstWeekOf: string;
+}
+
+/**
+ * Latest print versus every earlier tracked week.
+ *
+ * Record high: strictly above the prior max. Record low: strictly below
+ * the prior min. A tie with that extreme is not a record. buildTradingRange
+ * still lets the latest week win a tie so the city page can call it the
+ * high of the range; this helper does not.
+ *
+ * Needs at least `minPriorWeeks` earlier weeks (default 8). History is the
+ * same series the city page trading range uses.
+ */
+export function classifyRecordPrint(
+  history: readonly SnapshotLike[] | null | undefined,
+  minPriorWeeks = RECORD_MIN_PRIOR_WEEKS,
+): RecordPrint | null {
+  const prints = selectTrackedPrints(history);
+  if (prints.length === 0) return null;
+
+  const last = prints[prints.length - 1];
+  const lastWeek = weekKey(last.week_of);
+  const prior = prints.filter((s) => weekKey(s.week_of) < lastWeek);
+  const priorWeeks = new Set(prior.map((s) => weekKey(s.week_of))).size;
+  if (prior.length === 0 || priorWeeks < minPriorWeeks) return null;
+
+  let priorMax = prior[0].bpi_score;
+  let priorMin = prior[0].bpi_score;
+  for (const s of prior) {
+    if (s.bpi_score > priorMax) priorMax = s.bpi_score;
+    if (s.bpi_score < priorMin) priorMin = s.bpi_score;
+  }
+
+  const firstWeekOf = prints[0].week_of;
+  if (last.bpi_score > priorMax) {
+    return {
+      direction: "high",
+      bpi: last.bpi_score,
+      weekOf: last.week_of,
+      priorExtreme: priorMax,
+      priorWeeks,
+      firstWeekOf,
+    };
+  }
+  if (last.bpi_score < priorMin) {
+    return {
+      direction: "low",
+      bpi: last.bpi_score,
+      weekOf: last.week_of,
+      priorExtreme: priorMin,
+      priorWeeks,
+      firstWeekOf,
+    };
+  }
+  return null;
+}
+
+export interface CityRecordPrint {
+  slug: string;
+  name: string;
+  state: string;
+  direction: "high" | "low";
+  bpi: number;
+  weekOf: string;
+  priorExtreme: number;
+  /** "Dec 2025" */
+  sinceLabel: string;
+}
+
+export interface RecordCityInput {
+  city: { slug: string; name: string; state: string };
+  history: readonly SnapshotLike[] | null | undefined;
+}
+
+/**
+ * Cities whose own latest print is a record on the newest week in the set.
+ * A record from an older week stays off this board. Highs are priciest
+ * first; lows are cheapest first.
+ */
+export function findRecordPrints(cities: readonly RecordCityInput[]): {
+  highs: CityRecordPrint[];
+  lows: CityRecordPrint[];
+} {
+  let latest = "";
+  for (const city of cities) {
+    for (const snap of selectTrackedPrints(city.history)) {
+      const week = weekKey(snap.week_of);
+      if (week > latest) latest = week;
+    }
+  }
+
+  const highs: CityRecordPrint[] = [];
+  const lows: CityRecordPrint[] = [];
+  for (const city of cities) {
+    const record = classifyRecordPrint(city.history);
+    if (!record || weekKey(record.weekOf) !== latest) continue;
+    const item: CityRecordPrint = {
+      slug: city.city.slug,
+      name: city.city.name,
+      state: city.city.state,
+      direction: record.direction,
+      bpi: record.bpi,
+      weekOf: record.weekOf,
+      priorExtreme: record.priorExtreme,
+      sinceLabel: formatTrackingBegan(record.firstWeekOf),
+    };
+    if (record.direction === "high") highs.push(item);
+    else lows.push(item);
+  }
+
+  const byName = (a: CityRecordPrint, b: CityRecordPrint) =>
+    a.name.localeCompare(b.name) || a.slug.localeCompare(b.slug);
+  highs.sort((a, b) => b.bpi - a.bpi || byName(a, b));
+  lows.sort((a, b) => a.bpi - b.bpi || byName(a, b));
+  return { highs, lows };
+}
+
+export type RecordPrintToken =
+  | { type: "text"; text: string }
+  | { type: "city"; slug: string; name: string };
+
+/**
+ * One callout line. Null when there is nothing to say.
+ * Cities stay in the order given (findRecordPrints already sorted them).
+ * A shared tracking-began month is stated once; different months stay
+ * next to their city.
+ */
+export function recordPrintTokens(
+  direction: "high" | "low",
+  cities: readonly Pick<CityRecordPrint, "slug" | "name" | "bpi" | "sinceLabel">[],
+): RecordPrintToken[] | null {
+  if (cities.length === 0) return null;
+
+  const phrase = direction === "high" ? "highest" : "lowest";
+  const label = direction === "high" ? "Record high: " : "Record low: ";
+  const sameSince = cities.every((c) => c.sinceLabel === cities[0].sinceLabel);
+  const tokens: RecordPrintToken[] = [];
+  const pushText = (text: string) => {
+    const prev = tokens[tokens.length - 1];
+    if (prev && prev.type === "text") prev.text += text;
+    else tokens.push({ type: "text", text });
+  };
+
+  pushText(label);
+  cities.forEach((city, i) => {
+    if (i > 0) pushText(", ");
+    tokens.push({ type: "city", slug: city.slug, name: city.name });
+    const price = `$${city.bpi.toFixed(2)}`;
+    if (sameSince) {
+      pushText(`, ${price}`);
+    } else {
+      pushText(
+        `, ${price}, ${phrase} print since tracking began (${city.sinceLabel})`,
+      );
+    }
+  });
+
+  if (sameSince) {
+    const plural = cities.length === 1 ? "print" : "prints";
+    pushText(`, ${phrase} ${plural} since tracking began (${cities[0].sinceLabel}).`);
+  } else {
+    pushText(".");
+  }
+  return tokens;
+}
+
+/** Plain-text form of recordPrintTokens, for tests and captions. */
+export function formatRecordPrintLine(
+  direction: "high" | "low",
+  cities: readonly Pick<CityRecordPrint, "slug" | "name" | "bpi" | "sinceLabel">[],
+): string | null {
+  const tokens = recordPrintTokens(direction, cities);
+  if (!tokens) return null;
+  return tokens
+    .map((token) => (token.type === "text" ? token.text : token.name))
+    .join("");
 }
