@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { NewsletterEdition } from "@/components/newsletter-edition";
 import { buildWeekSameStoreReads } from "@/lib/same-store";
+import { findRecordPrintsForWeek } from "@/lib/city-readout";
 import { buildBoardShakeupForWeek } from "@/lib/rank-ladder";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
@@ -160,10 +161,9 @@ export default async function NewsletterPage() {
   );
 
   const shareUrl = newsletterShareUrl(latest.week_of);
-  const shakeup = buildBoardShakeupForWeek(
-    cities,
-    String(latest.week_of).slice(0, 10),
-  );
+  const weekKey = String(latest.week_of).slice(0, 10);
+  const shakeup = buildBoardShakeupForWeek(cities, weekKey);
+  const records = findRecordPrintsForWeek(cities, weekKey);
   const caption = buildNewsletterCaption({
     weekOf: latest.week_of,
     headline: latest.headline,
@@ -192,8 +192,9 @@ export default async function NewsletterPage() {
             headline={latest.headline}
             sections={latest.sections}
             shakeup={shakeup}
+            records={records}
             sameStore={Object.fromEntries(
-              buildWeekSameStoreReads(cities, String(latest.week_of).slice(0, 10)),
+              buildWeekSameStoreReads(cities, weekKey),
             )}
           />
 

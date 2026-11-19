@@ -371,6 +371,31 @@ export function findRecordPrints(cities: readonly RecordCityInput[]): {
   return { highs, lows };
 }
 
+/**
+ * Records set on one edition week. Prints after `weekOf` are dropped, then
+ * findRecordPrints runs on what's left, so an archived issue never sees a
+ * later week. If nobody printed on `weekOf`, the newest week left is earlier
+ * and those records are dropped — this issue only reports its own week.
+ */
+export function findRecordPrintsForWeek(
+  cities: readonly RecordCityInput[],
+  weekOf: string,
+): { highs: CityRecordPrint[]; lows: CityRecordPrint[] } {
+  const week = weekKey(weekOf);
+  const { highs, lows } = findRecordPrints(
+    cities.map((city) => ({
+      city: city.city,
+      history: (city.history ?? []).filter(
+        (snap) => weekKey(snap.week_of) <= week,
+      ),
+    })),
+  );
+  return {
+    highs: highs.filter((item) => weekKey(item.weekOf) === week),
+    lows: lows.filter((item) => weekKey(item.weekOf) === week),
+  };
+}
+
 export type RecordPrintToken =
   | { type: "text"; text: string }
   | { type: "city"; slug: string; name: string };

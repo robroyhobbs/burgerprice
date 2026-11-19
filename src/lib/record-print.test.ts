@@ -5,6 +5,7 @@ import {
   buildTradingRangeStory,
   classifyRecordPrint,
   findRecordPrints,
+  findRecordPrintsForWeek,
   formatRecordPrintLine,
   formatTrackingBegan,
   recordPrintTokens,
@@ -193,5 +194,87 @@ describe("findRecordPrints", () => {
       highs: [],
       lows: [],
     });
+  });
+});
+
+describe("findRecordPrintsForWeek", () => {
+  // Nine weeks ending on Portland's record. Two later prints are decoys:
+  // a quiet week, then a higher record the earlier issue must not see.
+  const throughRecord = weekly([10, 11, 12, 13, 14.23, 12, 11, 13, 14.58]);
+  const withLaterWeeks = weekly([10, 11, 12, 13, 14.23, 12, 11, 13, 14.58, 13.4, 16.2]);
+  const austin = weekly([10, 11, 12, 13, 14, 12, 11, 13, 12.5, 13, 13.2]);
+  const recordWeek = throughRecord[throughRecord.length - 1].week_of;
+  const quietWeek = withLaterWeeks[9].week_of;
+  const laterWeek = withLaterWeeks[withLaterWeeks.length - 1].week_of;
+  const line =
+    "Record high: Portland, $14.58, highest print since tracking began (Dec 2025).";
+
+  it("shows the record on the latest issue", () => {
+    const { highs, lows } = findRecordPrintsForWeek(
+      [
+        city("portland-or", "Portland", throughRecord),
+        city("austin-tx", "Austin", austin.slice(0, throughRecord.length)),
+      ],
+      recordWeek,
+    );
+    assert.equal(highs[0]?.bpi, 14.58);
+    assert.equal(highs[0]?.priorExtreme, 14.23);
+    assert.equal(highs[0]?.weekOf, recordWeek);
+    assert.deepEqual(
+      highs.map((item) => item.name),
+      ["Portland"],
+    );
+    assert.equal(formatRecordPrintLine("high", highs), line);
+    assert.equal(formatRecordPrintLine("low", lows), null);
+  });
+
+  it("computes an earlier issue from history up to that week", () => {
+    const cities = [
+      city("portland-or", "Portland", withLaterWeeks),
+      city("austin-tx", "Austin", austin),
+    ];
+    const earlier = findRecordPrintsForWeek(cities, recordWeek);
+    assert.equal(formatRecordPrintLine("high", earlier.highs), line);
+    assert.equal(earlier.highs[0]?.priorExtreme, 14.23);
+    assert.equal(earlier.highs[0]?.weekOf, recordWeek);
+    assert.equal(formatRecordPrintLine("low", earlier.lows), null);
+
+    const leaked = findRecordPrints(cities);
+    assert.equal(leaked.highs[0]?.bpi, 16.2);
+    assert.equal(leaked.highs[0]?.weekOf, laterWeek);
+
+    const later = findRecordPrintsForWeek(cities, laterWeek);
+    assert.equal(later.highs[0]?.bpi, 16.2);
+    assert.equal(later.highs[0]?.priorExtreme, 14.58);
+    assert.equal(
+      formatRecordPrintLine("high", later.highs),
+      "Record high: Portland, $16.20, highest print since tracking began (Dec 2025).",
+    );
+  });
+
+  it("omits the line when that week set no record", () => {
+    const { highs, lows } = findRecordPrintsForWeek(
+      [
+        city("portland-or", "Portland", withLaterWeeks),
+        city("austin-tx", "Austin", austin),
+      ],
+      quietWeek,
+    );
+    assert.deepEqual(highs, []);
+    assert.deepEqual(lows, []);
+    assert.equal(formatRecordPrintLine("high", highs), null);
+    assert.equal(formatRecordPrintLine("low", lows), null);
+    assert.equal(recordPrintTokens("high", highs), null);
+    assert.equal(recordPrintTokens("low", lows), null);
+  });
+
+  it("does not borrow an earlier record when the issue week has no print", () => {
+    const { highs, lows } = findRecordPrintsForWeek(
+      [city("portland-or", "Portland", throughRecord)],
+      "2026-11-16",
+    );
+    assert.deepEqual(highs, []);
+    assert.deepEqual(lows, []);
+    assert.equal(formatRecordPrintLine("high", highs), null);
   });
 });
