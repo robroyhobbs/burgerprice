@@ -1,9 +1,17 @@
 "use client";
 
+import { Fragment } from "react";
 import type { NewsletterContent } from "@/lib/types";
 import type { TapeSameStoreRead } from "@/lib/same-store";
 import type { BoardShakeupData } from "@/lib/rank-ladder";
+import {
+  recordPrintTokens,
+  type CityRecordPrint,
+} from "@/lib/city-readout";
 import Link from "next/link";
+
+const cityLinkCls =
+  "font-medium text-green-300 hover:text-green-400 underline decoration-dotted";
 
 interface NewsletterEditionProps {
   weekOf: string;
@@ -13,6 +21,8 @@ interface NewsletterEditionProps {
   sameStore?: Record<string, TapeSameStoreRead>;
   /** Rank climber/slide vs the prior available print. Omitted when there's no comparison. */
   shakeup?: BoardShakeupData | null;
+  /** Record highs/lows set on this edition's week. Empty weeks omit the line. */
+  records?: { highs: CityRecordPrint[]; lows: CityRecordPrint[] } | null;
 }
 
 function tapeKey(name: string): string {
@@ -74,6 +84,7 @@ export function NewsletterEdition({
   sections,
   sameStore,
   shakeup,
+  records,
 }: NewsletterEditionProps) {
   const tapeReads = sameStore
     ? sections.theTape.map((m) => sameStore[tapeKey(m.city)]).filter(Boolean)
@@ -99,7 +110,7 @@ export function NewsletterEdition({
         </h1>
       </div>
 
-      {shakeup && <BoardShakeupSection shakeup={shakeup} />}
+      {shakeup && <BoardShakeupSection shakeup={shakeup} records={records} />}
 
       {/* Market Overview */}
       <Section title="MARKET OVERVIEW" icon="📊">
@@ -228,15 +239,19 @@ export function NewsletterEdition({
   );
 }
 
-function BoardShakeupSection({ shakeup }: { shakeup: BoardShakeupData }) {
+function BoardShakeupSection({
+  shakeup,
+  records,
+}: {
+  shakeup: BoardShakeupData;
+  records?: { highs: CityRecordPrint[]; lows: CityRecordPrint[] } | null;
+}) {
   const since = new Date(shakeup.prevWeekOf + "T00:00:00").toLocaleDateString(
     "en-US",
     { month: "short", day: "numeric" },
   );
   const { climber, slider, held, total } = shakeup;
   const spots = (n: number) => `${n} ${n === 1 ? "spot" : "spots"}`;
-  const cityCls =
-    "font-medium text-green-300 hover:text-green-400 underline decoration-dotted";
   return (
     <Section title="BOARD SHAKEUP" icon="🏆">
       <p className="text-[10px] text-green-500/60 font-mono uppercase tracking-widest mb-3">
@@ -247,7 +262,7 @@ function BoardShakeupSection({ shakeup }: { shakeup: BoardShakeupData }) {
           {climber && (
             <>
               <span className="text-red-400 font-bold">▲</span> Biggest climber:{" "}
-              <Link href={`/cities/${climber.slug}`} className={cityCls}>
+              <Link href={`/cities/${climber.slug}`} className={cityLinkCls}>
                 {climber.name}
               </Link>
               , up {spots(climber.spots)} to #{climber.rank} (from #{climber.prevRank}).{" "}
@@ -256,7 +271,7 @@ function BoardShakeupSection({ shakeup }: { shakeup: BoardShakeupData }) {
           {slider && (
             <>
               <span className="text-green-400 font-bold">▼</span> Biggest slide:{" "}
-              <Link href={`/cities/${slider.slug}`} className={cityCls}>
+              <Link href={`/cities/${slider.slug}`} className={cityLinkCls}>
                 {slider.name}
               </Link>
               , down {spots(slider.spots)} to #{slider.rank} (from #{slider.prevRank}).{" "}
@@ -271,7 +286,37 @@ function BoardShakeupSection({ shakeup }: { shakeup: BoardShakeupData }) {
           No rank changes. All {total} cities held their spot.
         </p>
       )}
+      <RecordPrintLine direction="high" cities={records?.highs ?? []} />
+      <RecordPrintLine direction="low" cities={records?.lows ?? []} />
     </Section>
+  );
+}
+
+function RecordPrintLine({
+  direction,
+  cities,
+}: {
+  direction: "high" | "low";
+  cities: readonly CityRecordPrint[];
+}) {
+  const tokens = recordPrintTokens(direction, cities);
+  if (!tokens) return null;
+  return (
+    <p className="text-sm text-gray-300 leading-relaxed mt-1">
+      {tokens.map((token, i) =>
+        token.type === "city" ? (
+          <Link
+            key={token.slug}
+            href={`/cities/${token.slug}`}
+            className={cityLinkCls}
+          >
+            {token.name}
+          </Link>
+        ) : (
+          <Fragment key={`${token.type}-${i}`}>{token.text}</Fragment>
+        ),
+      )}
+    </p>
   );
 }
 
