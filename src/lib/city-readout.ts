@@ -184,15 +184,24 @@ export interface TradingRange {
 }
 
 /**
+ * Tracked prints required before the city record FAQ is worth printing.
+ * The on-page Trading Range block still waits for three (buildTradingRange's
+ * default). Both read the same series.
+ */
+export const CITY_RECORD_FAQ_MIN_PRINTS = 2;
+
+/**
  * Low / high / current across every tracked week. Ties resolve to the most
- * recent week so "fresh high" reads correctly. Needs 3+ valid prints.
- * Uses selectTrackedPrints, the same series classifyRecordPrint reads.
+ * recent week so "fresh high" reads correctly. Needs `minPrints` valid prints
+ * (default 3, the city-page trading range). Uses selectTrackedPrints, the same
+ * series classifyRecordPrint reads.
  */
 export function buildTradingRange(
-  history: SnapshotLike[] | null | undefined,
+  history: readonly SnapshotLike[] | null | undefined,
+  minPrints = 3,
 ): TradingRange | null {
   const prints = selectTrackedPrints(history);
-  if (prints.length < 3) return null;
+  if (prints.length < minPrints) return null;
 
   let low = prints[0];
   let high = prints[0];
@@ -216,18 +225,71 @@ export function buildTradingRange(
   };
 }
 
+/**
+ * Whether the latest print is the range high or low.
+ *
+ * Same rule as the trading-range sentence: a tie belongs to the most recent
+ * week, so a print that merely matches an earlier extreme still counts.
+ * A flat tape (high week and low week are the same print) reads as a high.
+ * classifyRecordPrint is stricter — a new extreme after eight prior weeks —
+ * and does not drive this.
+ */
+export function tradingRangeExtreme(r: TradingRange): "high" | "low" | null {
+  if (r.last.weekOf === r.high.weekOf) return "high";
+  if (r.last.weekOf === r.low.weekOf) return "low";
+  return null;
+}
+
+/** "Nov 16, 2026". Same calendar day as formatTapeWeek, with the year. */
+export function formatTapeWeekWithYear(weekOf: string): string {
+  const d = new Date(weekOf + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return weekOf;
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
+ * FAQ answer for the city's record high and low.
+ * Null when fewer than two tracked prints — nothing to call a range.
+ * Dollars, weeks, and the record sentence all come from buildTradingRange,
+ * the same series the Trading Range block renders.
+ */
+export function buildCityRecordFaqAnswer(
+  cityName: string,
+  history: readonly SnapshotLike[] | null | undefined,
+): string | null {
+  const range = buildTradingRange(history, CITY_RECORD_FAQ_MIN_PRINTS);
+  if (!range) return null;
+
+  const answer =
+    `${cityName}'s record-high BPI is $${range.high.bpi.toFixed(2)} (week of ${formatTapeWeekWithYear(range.high.weekOf)}) ` +
+    `and its record low is $${range.low.bpi.toFixed(2)} (week of ${formatTapeWeekWithYear(range.low.weekOf)}), ` +
+    `across ${range.weeks} weekly prints since tracking began in ${formatTrackingBegan(range.firstWeekOf)}.`;
+
+  const extreme = tradingRangeExtreme(range);
+  if (extreme === "high") {
+    return `${answer} This week's $${range.last.bpi.toFixed(2)} is the record high.`;
+  }
+  if (extreme === "low") {
+    return `${answer} This week's $${range.last.bpi.toFixed(2)} is the record low.`;
+  }
+  return answer;
+}
+
 /** One sentence on where the latest print sits in the full range. */
 export function buildTradingRangeStory(
   cityName: string,
   r: TradingRange,
 ): string {
-  const lastIsHigh = r.last.weekOf === r.high.weekOf;
-  const lastIsLow = r.last.weekOf === r.low.weekOf;
   const since = formatTrackingBegan(r.firstWeekOf);
-  if (lastIsHigh) {
+  const extreme = tradingRangeExtreme(r);
+  if (extreme === "high") {
     return `${cityName} is printing its highest burger since tracking began ${since}. Record territory, and not the fun kind.`;
   }
-  if (lastIsLow) {
+  if (extreme === "low") {
     return `${cityName} is printing its cheapest burger since tracking began ${since}. Rare good news at the window.`;
   }
   if (r.position >= 0.75) {

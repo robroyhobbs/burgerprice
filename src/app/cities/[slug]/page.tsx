@@ -127,6 +127,7 @@ export default async function CityPage({ params }: CityPageProps) {
     mostExpensivePrice: snap?.most_expensive_price ?? null,
     sampleSize: snap?.sample_size ?? null,
     peerCities,
+    history: cityData.history,
   });
   const faqJsonLd = buildFaqPageJsonLd(faqItems);
 

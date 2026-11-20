@@ -1,4 +1,8 @@
 import type { CityDashboardData } from "./types";
+import {
+  buildCityRecordFaqAnswer,
+  type SnapshotLike,
+} from "./city-readout";
 
 const DEFAULT_BASE = "https://burgerprice.com";
 
@@ -178,6 +182,8 @@ export interface CityFaqContext {
   mostExpensivePrice: number | null;
   sampleSize: number | null;
   peerCities: { name: string; state: string; bpi: number }[];
+  /** Full weekly tape. Same series the Trading Range block reads. */
+  history?: readonly SnapshotLike[] | null;
 }
 
 /**
@@ -234,6 +240,14 @@ export function buildCityFaqItems(ctx: CityFaqContext): FaqItem[] {
     items.push({
       q: `What's the cheapest and most expensive burger in ${ctx.name}?`,
       a: `Floor: ${ctx.cheapestRestaurant} at $${ctx.cheapestPrice.toFixed(2)}. Ceiling: ${ctx.mostExpensiveRestaurant} at $${ctx.mostExpensivePrice.toFixed(2)}.${sample} Full tape is on this page.`,
+    });
+  }
+
+  const recordAnswer = buildCityRecordFaqAnswer(ctx.name, ctx.history);
+  if (recordAnswer) {
+    items.push({
+      q: `What's ${ctx.name}'s highest and lowest Burger Price Index on record?`,
+      a: recordAnswer,
     });
   }
 
