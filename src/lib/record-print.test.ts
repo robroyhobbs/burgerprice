@@ -6,8 +6,11 @@ import {
   classifyRecordPrint,
   findRecordPrints,
   findRecordPrintsForWeek,
+  buildRecordWatchFaq,
   formatRecordPrintLine,
+  formatRecordWatchCopy,
   formatTrackingBegan,
+  RECORD_WATCH_FAQ_QUESTION,
   recordPrintTokens,
   type SnapshotLike,
 } from "./city-readout.ts";
@@ -276,5 +279,67 @@ describe("findRecordPrintsForWeek", () => {
     assert.deepEqual(highs, []);
     assert.deepEqual(lows, []);
     assert.equal(formatRecordPrintLine("high", highs), null);
+  });
+});
+
+describe("formatRecordWatchCopy", () => {
+  const portland = {
+    slug: "portland-or",
+    name: "Portland",
+    bpi: 14.58,
+    sinceLabel: "Dec 2025",
+  };
+  const highLine =
+    "Record high: Portland, $14.58, highest print since tracking began (Dec 2025).";
+  const lowLine =
+    "Record low: Cleveland, $9.50, lowest print since tracking began (Jan 2026).";
+
+  it("joins the same sentences /rankings prints, high then low", () => {
+    assert.equal(
+      formatRecordWatchCopy({ highs: [portland], lows: [] }),
+      highLine,
+    );
+    assert.equal(
+      formatRecordWatchCopy({
+        highs: [portland],
+        lows: [
+          {
+            slug: "cleveland-oh",
+            name: "Cleveland",
+            bpi: 9.5,
+            sinceLabel: "Jan 2026",
+          },
+        ],
+      }),
+      `${highLine} ${lowLine}`,
+    );
+  });
+
+  it("stays quiet when the week set no record", () => {
+    assert.equal(formatRecordWatchCopy({ highs: [], lows: [] }), null);
+    assert.equal(buildRecordWatchFaq({ highs: [], lows: [] }), null);
+  });
+
+  it("builds an FAQ answer that matches the callout, and omits in-range weeks", () => {
+    const faq = buildRecordWatchFaq({ highs: [portland], lows: [] });
+    assert.deepEqual(faq, { q: RECORD_WATCH_FAQ_QUESTION, a: highLine });
+
+    const throughRecord = weekly([10, 11, 12, 13, 14.23, 12, 11, 13, 14.58]);
+    const quiet = weekly([10, 11, 12, 13, 14.23, 12, 11, 13, 14.58, 13.4]);
+    const recordWeek = throughRecord[throughRecord.length - 1].week_of;
+    const quietWeek = quiet[quiet.length - 1].week_of;
+    const onRecord = findRecordPrintsForWeek(
+      [city("portland-or", "Portland", throughRecord)],
+      recordWeek,
+    );
+    assert.equal(formatRecordWatchCopy(onRecord), highLine);
+    assert.equal(buildRecordWatchFaq(onRecord)?.a, highLine);
+
+    const inRange = findRecordPrintsForWeek(
+      [city("portland-or", "Portland", quiet)],
+      quietWeek,
+    );
+    assert.equal(formatRecordWatchCopy(inRange), null);
+    assert.equal(buildRecordWatchFaq(inRange), null);
   });
 });

@@ -518,3 +518,32 @@ export function formatRecordPrintLine(
     .map((token) => (token.type === "text" ? token.text : token.name))
     .join("");
 }
+
+type RecordWatchCities = {
+  highs: readonly Pick<CityRecordPrint, "slug" | "name" | "bpi" | "sinceLabel">[];
+  lows: readonly Pick<CityRecordPrint, "slug" | "name" | "bpi" | "sinceLabel">[];
+};
+
+/**
+ * Plain text of the high line, then the low line. Same sentences as
+ * /rankings. Null when that week set no record.
+ */
+export function formatRecordWatchCopy(records: RecordWatchCities): string | null {
+  const lines = [
+    formatRecordPrintLine("high", records.highs),
+    formatRecordPrintLine("low", records.lows),
+  ].filter((line): line is string => line != null);
+  return lines.length > 0 ? lines.join(" ") : null;
+}
+
+export const RECORD_WATCH_FAQ_QUESTION =
+  "Which cities set a record high or low this week?";
+
+/** Homepage FAQ entry. Null when formatRecordWatchCopy has nothing to say. */
+export function buildRecordWatchFaq(
+  records: RecordWatchCities,
+): { q: string; a: string } | null {
+  const a = formatRecordWatchCopy(records);
+  if (!a) return null;
+  return { q: RECORD_WATCH_FAQ_QUESTION, a };
+}
