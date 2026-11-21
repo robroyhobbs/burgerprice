@@ -22,6 +22,7 @@ import { Footer } from "@/components/footer";
 import { PrintDelayNotice } from "@/components/print-delay-notice";
 import { getShowdownIndices, parseShowdownPair } from "@/lib/showdown";
 import { buildBoardShakeupForWeek, buildRankMovements } from "@/lib/rank-ladder";
+import { buildRecordWatchFaq, findRecordPrintsForWeek } from "@/lib/city-readout";
 import { newsletterRankShareClause, showdownOgPath } from "@/lib/share";
 import {
   buildFaqPageJsonLd,
@@ -163,6 +164,12 @@ export default async function Home({ searchParams }: HomeProps) {
         ),
       )
     : null;
+  const recordWeek = String(
+    nationalCurrent?.week_of ?? data.weekOf ?? "",
+  ).slice(0, 10);
+  const records = recordWeek
+    ? findRecordPrintsForWeek(data.cities, recordWeek)
+    : { highs: [], lows: [] };
 
   // Pick 2 showdown cities: shared pair from the URL when both are valid,
   // otherwise the deterministic weekly rotation.
@@ -216,10 +223,13 @@ export default async function Home({ searchParams }: HomeProps) {
           mostExpensiveCity,
         })
       : [];
+  const recordFaq =
+    showdownFaqItems.length > 0 ? buildRecordWatchFaq(records) : null;
+  const homeFaqItems = recordFaq
+    ? [...showdownFaqItems, recordFaq]
+    : showdownFaqItems;
   const showdownFaqJsonLd =
-    showdownFaqItems.length > 0
-      ? buildFaqPageJsonLd(showdownFaqItems)
-      : null;
+    homeFaqItems.length > 0 ? buildFaqPageJsonLd(homeFaqItems) : null;
 
   const homePageJsonLd = buildHomePageJsonLd({
     weekOf: data.weekOf ?? nationalCurrent?.week_of ?? null,
@@ -251,6 +261,8 @@ export default async function Home({ searchParams }: HomeProps) {
           cheapestCity={cheapestCity}
           mostExpensiveCity={mostExpensiveCity}
           rankLine={nationalRankLine}
+          recordHighs={records.highs}
+          recordLows={records.lows}
         />
         <BpiExplainer
           avgBpi={nationalCurrent?.avg_bpi ?? null}
@@ -271,7 +283,7 @@ export default async function Home({ searchParams }: HomeProps) {
         />
 
         {/* Showdown FAQ — mirrors FAQPage JSON-LD */}
-        {showdownFaqItems.length > 0 ? (
+        {homeFaqItems.length > 0 ? (
           <section
             className="max-w-7xl mx-auto px-6 pb-4"
             aria-labelledby="showdown-faq"
@@ -283,7 +295,7 @@ export default async function Home({ searchParams }: HomeProps) {
               Showdown FAQ
             </h2>
             <div className="space-y-4">
-              {showdownFaqItems.map((item) => (
+              {homeFaqItems.map((item) => (
                 <details
                   key={item.q}
                   className="group bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter px-5 py-4"

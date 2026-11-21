@@ -1,9 +1,22 @@
 "use client";
 
+import Link from "next/link";
+import { Fragment } from "react";
 import type { NationalBpiPoint } from "@/lib/types";
+import {
+  recordPrintTokens,
+  type RecordPrintToken,
+} from "@/lib/city-readout";
 import { Sparkline } from "./sparkline";
 import { ShareStrip } from "./share-strip";
 import { buildNationalCaption, nationalShareUrl } from "@/lib/share";
+
+interface RecordWatchCity {
+  slug: string;
+  name: string;
+  bpi: number;
+  sinceLabel: string;
+}
 
 interface NationalBpiProps {
   history: NationalBpiPoint[];
@@ -13,6 +26,10 @@ interface NationalBpiProps {
   mostExpensiveCity?: string | null;
   /** Biggest climber/slide vs the prior print. Omitted when null. */
   rankLine?: string | null;
+  /** Record highs on the week this card prints. Empty omits the line. */
+  recordHighs?: readonly RecordWatchCity[];
+  /** Record lows on the week this card prints. Empty omits the line. */
+  recordLows?: readonly RecordWatchCity[];
 }
 
 export function NationalBpi({
@@ -20,6 +37,8 @@ export function NationalBpi({
   cheapestCity = null,
   mostExpensiveCity = null,
   rankLine = null,
+  recordHighs = [],
+  recordLows = [],
 }: NationalBpiProps) {
   if (history.length === 0) return null;
 
@@ -97,6 +116,8 @@ export function NationalBpi({
           </div>
         </div>
 
+        <RecordWatch highs={recordHighs} lows={recordLows} />
+
         <ShareStrip
           className="!mt-6"
           shareUrl={shareUrl}
@@ -105,5 +126,51 @@ export function NationalBpi({
         />
       </div>
     </section>
+  );
+}
+
+function RecordWatch({
+  highs,
+  lows,
+}: {
+  highs: readonly RecordWatchCity[];
+  lows: readonly RecordWatchCity[];
+}) {
+  const high = recordPrintTokens("high", highs);
+  const low = recordPrintTokens("low", lows);
+  if (!high && !low) return null;
+
+  return (
+    <div
+      className="mt-5 pt-4 border-t border-gray-100 dark:border-grill-lighter"
+      aria-label="Record watch"
+    >
+      <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium">
+        Record watch
+      </p>
+      <RecordPrintLine tokens={high} />
+      <RecordPrintLine tokens={low} />
+    </div>
+  );
+}
+
+function RecordPrintLine({ tokens }: { tokens: RecordPrintToken[] | null }) {
+  if (!tokens) return null;
+  return (
+    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mt-1">
+      {tokens.map((token, i) =>
+        token.type === "city" ? (
+          <Link
+            key={token.slug}
+            href={`/cities/${token.slug}`}
+            className="font-medium text-gray-900 dark:text-white hover:text-ketchup dark:hover:text-mustard"
+          >
+            {token.name}
+          </Link>
+        ) : (
+          <Fragment key={`${token.type}-${i}`}>{token.text}</Fragment>
+        ),
+      )}
+    </p>
   );
 }
