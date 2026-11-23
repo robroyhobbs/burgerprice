@@ -8,8 +8,10 @@ register(new URL("./ts-resolve-hook.mjs", import.meta.url));
 
 const {
   formatAllTimeRange,
+  formatBiggestMoversLine,
   formatCityLlmsLine,
   formatNationalBpiLine,
+  formatNationalRangeLine,
   ranksPriciestFirst,
   recordDirectionsBySlug,
 } = await import("./llms-txt.ts");
@@ -189,6 +191,97 @@ describe("formatNationalBpiLine", () => {
   });
 });
 
+describe("formatBiggestMoversLine", () => {
+  it("names the biggest gainer and the biggest decliner", () => {
+    assert.equal(
+      formatBiggestMoversLine([
+        { name: "Austin", state: "TX", changePct: 1.4, weekOf: "2026-11-23" },
+        { name: "Boston", state: "MA", changePct: 13.6, weekOf: "2026-11-23" },
+        { name: "New York", state: "NY", changePct: 10.2, weekOf: "2026-11-23" },
+        { name: "Chicago", state: "IL", changePct: 0, weekOf: "2026-11-23" },
+        { name: "Nashville", state: "TN", changePct: -11, weekOf: "2026-11-23" },
+        { name: "Portland", state: "OR", changePct: -13.2, weekOf: "2026-11-23" },
+      ]),
+      "Biggest movers this week: Boston, MA +13.6% (gainer), Portland, OR -13.2% (decliner).",
+    );
+  });
+
+  it("omits the gainer when no city rose", () => {
+    assert.equal(
+      formatBiggestMoversLine([
+        { name: "Nashville", state: "TN", changePct: -11 },
+        { name: "Portland", state: "OR", changePct: -13.2 },
+        { name: "Chicago", state: "IL", changePct: 0 },
+      ]),
+      "Biggest movers this week: Portland, OR -13.2% (decliner).",
+    );
+  });
+
+  it("omits the decliner when no city fell", () => {
+    assert.equal(
+      formatBiggestMoversLine([
+        { name: "Austin", state: "TX", changePct: 1.4 },
+        { name: "Boston", state: "MA", changePct: 13.6 },
+        { name: "Chicago", state: "IL", changePct: 0 },
+      ]),
+      "Biggest movers this week: Boston, MA +13.6% (gainer).",
+    );
+  });
+
+  it("omits the line when the latest week has no prior print", () => {
+    assert.equal(
+      formatBiggestMoversLine([
+        { name: "Boston", state: "MA", changePct: 13.6, weekOf: "2026-11-16" },
+        { name: "Portland", state: "OR", changePct: null, weekOf: "2026-11-23" },
+        { name: "Austin", state: "TX", changePct: null, weekOf: "2026-11-23" },
+      ]),
+      null,
+    );
+    assert.equal(formatBiggestMoversLine([]), null);
+    assert.equal(
+      formatBiggestMoversLine([
+        { name: "Boston", state: "MA", changePct: null },
+        { name: "Portland", state: "OR", changePct: Number.NaN },
+      ]),
+      null,
+    );
+  });
+
+  it("omits the line when every latest print is flat", () => {
+    assert.equal(
+      formatBiggestMoversLine([
+        { name: "Austin", state: "TX", changePct: 0 },
+        { name: "Boston", state: "MA", changePct: 0 },
+      ]),
+      null,
+    );
+  });
+
+  it("ranks only the newest week and breaks a tie by name", () => {
+    assert.equal(
+      formatBiggestMoversLine([
+        { name: "Boston", state: "MA", slug: "boston-ma", changePct: 5, weekOf: "2026-11-23" },
+        { name: "Austin", state: "TX", slug: "austin-tx", changePct: 50, weekOf: "2026-11-16" },
+        { name: "Seattle", state: "WA", slug: "seattle-wa", changePct: 5, weekOf: "2026-11-23T00:00:00.000Z" },
+        { name: "Portland", state: "OR", slug: "portland-or", changePct: -2, weekOf: "2026-11-23" },
+        { name: "Nashville", state: "TN", slug: "nashville-tn", changePct: -2, weekOf: "2026-11-23" },
+        { name: "Chicago", state: "IL", slug: "chicago-il", changePct: -40, weekOf: "2026-11-09" },
+      ]),
+      "Biggest movers this week: Boston, MA +5.0% (gainer), Nashville, TN -2.0% (decliner).",
+    );
+  });
+});
+
+function nationalWeeks(
+  scores: number[],
+  start = "2026-01-05",
+): { week_of: string; avg_bpi: number }[] {
+  return scores.map((avg_bpi, i) => ({
+    week_of: addDays(start, i * 7),
+    avg_bpi,
+  }));
+}
+
 describe("formatAllTimeRange", () => {
   it("prints low then high with ISO weeks and the print count", () => {
     assert.equal(
@@ -228,6 +321,57 @@ describe("formatAllTimeRange", () => {
         { week_of: "2026-11-02", bpi_score: 10.77, change_pct: null },
         { week_of: "2026-11-09", bpi_score: 0, change_pct: null },
         { week_of: "2026-11-16", bpi_score: Number.NaN, change_pct: null },
+      ]),
+      null,
+    );
+  });
+});
+
+describe("formatNationalRangeLine", () => {
+  it("prints the national low and high, and flags a strict record", () => {
+    assert.equal(
+      formatNationalRangeLine([
+        { week_of: "2026-11-23T00:00:00.000Z", avg_bpi: 14.86 },
+        { week_of: "not-a-week", avg_bpi: 1 },
+        { week_of: "2026-06-29", avg_bpi: 16.11 },
+        { week_of: "2026-11-02", avg_bpi: Number.NaN },
+        { week_of: "2026-11-02", avg_bpi: 14.21 },
+      ]),
+      "National BPI all-time range: $14.21 (week of 2026-11-02) to $16.11 (week of 2026-06-29) across 3 prints.",
+    );
+
+    const high = nationalWeeks([14, 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 16]);
+    assert.equal(
+      formatNationalRangeLine(high),
+      `National BPI all-time range: $14.00 (week of 2026-01-05) to $16.00 (week of ${high[8].week_of}) across 9 prints; record high.`,
+    );
+
+    const low = nationalWeeks([16, 15.5, 15, 14.8, 14.6, 14.4, 14.2, 14, 12]);
+    assert.equal(
+      formatNationalRangeLine(low),
+      `National BPI all-time range: $12.00 (week of ${low[8].week_of}) to $16.00 (week of 2026-01-05) across 9 prints; record low.`,
+    );
+  });
+
+  it("does not call a tie or a short tape a national record", () => {
+    const tied = nationalWeeks([10, 11, 12, 13, 14, 13, 12, 11, 14]);
+    assert.equal(
+      formatNationalRangeLine(tied),
+      `National BPI all-time range: $10.00 (week of 2026-01-05) to $14.00 (week of ${tied[8].week_of}) across 9 prints.`,
+    );
+    assert.equal(
+      formatNationalRangeLine([
+        { week_of: "2026-11-09", avg_bpi: 14 },
+        { week_of: "2026-11-16", avg_bpi: 15 },
+        { week_of: "2026-11-23", avg_bpi: 16 },
+      ]),
+      "National BPI all-time range: $14.00 (week of 2026-11-09) to $16.00 (week of 2026-11-23) across 3 prints.",
+    );
+    assert.equal(formatNationalRangeLine([]), null);
+    assert.equal(
+      formatNationalRangeLine([
+        { week_of: "2026-11-16", avg_bpi: 15.01 },
+        { week_of: "2026-11-23", avg_bpi: 14.86 },
       ]),
       null,
     );

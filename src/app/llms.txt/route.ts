@@ -1,7 +1,9 @@
 import { getAllCities, getNationalBpiHistory } from "@/lib/data";
 import {
+  formatBiggestMoversLine,
   formatCityLlmsLine,
   formatNationalBpiLine,
+  formatNationalRangeLine,
   ranksPriciestFirst,
   recordDirectionsBySlug,
 } from "@/lib/llms-txt";
@@ -17,7 +19,9 @@ const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://burgerprice.com").
  *
  * History comes from the single getAllCities snapshot query (the same bulk
  * read /rankings and /data/bpi.json use). Rank, range, and records are
- * computed from that array. A missing print or a short tape drops that
+ * computed from that array. Movers use each city's stored week-over-week
+ * change. The national range uses getNationalBpiHistory, the same series
+ * as the homepage card. A missing print or a short tape drops that
  * clause instead of failing the document.
  */
 export async function GET() {
@@ -28,8 +32,9 @@ export async function GET() {
     .sort()
     .at(-1);
 
+  const nationalHistory = getNationalBpiHistory(cities);
   const nationalLine = formatNationalBpiLine(
-    getNationalBpiHistory(cities),
+    nationalHistory,
     cities.map(({ city, currentSnapshot }) => ({
       name: city.name,
       state: city.state,
@@ -38,6 +43,16 @@ export async function GET() {
       weekOf: currentSnapshot?.week_of ?? null,
     })),
   );
+  const moversLine = formatBiggestMoversLine(
+    cities.map(({ city, currentSnapshot }) => ({
+      name: city.name,
+      state: city.state,
+      slug: city.slug,
+      changePct: currentSnapshot?.change_pct ?? null,
+      weekOf: currentSnapshot?.week_of ?? null,
+    })),
+  );
+  const nationalRangeLine = formatNationalRangeLine(nationalHistory);
   const ranks = ranksPriciestFirst(cities);
   const records = latestWeek
     ? recordDirectionsBySlug(cities, latestWeek)
@@ -62,6 +77,8 @@ export async function GET() {
     `Latest print: ${latestWeek ? `week of ${latestWeek}` : "none yet"}. Weeks start on Monday; a new print lands each Monday.`,
   ];
   if (nationalLine) printLines.push(nationalLine);
+  if (moversLine) printLines.push(moversLine);
+  if (nationalRangeLine) printLines.push(nationalRangeLine);
 
   const body = `# Burger Price Index
 

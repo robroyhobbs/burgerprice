@@ -3,10 +3,13 @@
  * National dollars come from getNationalBpiHistory (the homepage card).
  * Rank matches /rankings and buildRankLadder: #1 is the priciest city.
  * Range and records use the city-page trading-range helpers.
+ * Movers use each city's stored week-over-week change, the same figure
+ * the homepage Biggest Movers board ranks.
  */
 
 import {
   buildTradingRange,
+  classifyRecordPrint,
   findRecordPrintsForWeek,
   type RecordCityInput,
   type SnapshotLike,
@@ -47,6 +50,18 @@ function cityLabel(city: Pick<NationalCityPrint, "name" | "state">): string {
   return state ? `${city.name}, ${state}` : city.name;
 }
 
+/** Finite national prints, oldest week first. One row per history entry. */
+function trackedNationalPoints(
+  history: readonly NationalHistoryPoint[],
+): NationalHistoryPoint[] {
+  return history
+    .filter(
+      (point) =>
+        Number.isFinite(point.avg_bpi) && weekStamp(point.week_of) != null,
+    )
+    .sort((a, b) => weekStamp(a.week_of)!.localeCompare(weekStamp(b.week_of)!));
+}
+
 /**
  * National BPI line for the latest week in `history`.
  *
@@ -60,12 +75,7 @@ export function formatNationalBpiLine(
   history: readonly NationalHistoryPoint[],
   cities: readonly NationalCityPrint[],
 ): string | null {
-  const points = history
-    .filter(
-      (point) =>
-        Number.isFinite(point.avg_bpi) && weekStamp(point.week_of) != null,
-    )
-    .sort((a, b) => weekStamp(a.week_of)!.localeCompare(weekStamp(b.week_of)!));
+  const points = trackedNationalPoints(history);
   if (points.length === 0) return null;
 
   const current = points[points.length - 1];
@@ -109,6 +119,79 @@ export function formatNationalBpiLine(
     }
   }
   return sentences.join(" ");
+}
+
+export interface MoverCityPrint {
+  name: string;
+  state: string;
+  slug?: string;
+  /** Stored week-over-week change already shown on the city line. Null when that city has no prior print. */
+  changePct: number | null;
+  /** That city's latest print. When any city has a week, only the newest week is ranked. */
+  weekOf?: string | null;
+}
+
+/** Same sign as the homepage mover column: "+13.6%" / "-13.2%". */
+function signedMove(n: number): string {
+  return `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
+}
+
+/**
+ * Biggest gainer and decliner this week.
+ *
+ * Same ranking as the homepage Biggest Movers board: each city's stored
+ * change_pct (the figure the city line already prints), zeros left off,
+ * largest rise and largest fall. Ties break by name, which is the order
+ * getAllCities returns. Cities off the newest week are not this week.
+ * Null when that week has no prior print, or nobody rose and nobody fell.
+ */
+export function formatBiggestMoversLine(
+  cities: readonly MoverCityPrint[],
+): string | null {
+  const stamped = cities.map((city) => ({
+    ...city,
+    week: weekStamp(city.weekOf),
+  }));
+  const weeks = stamped
+    .map((city) => city.week)
+    .filter((week): week is string => week != null);
+  const latest =
+    weeks.length > 0 ? weeks.reduce((a, b) => (a > b ? a : b)) : null;
+  const board = latest
+    ? stamped.filter((city) => city.week === latest)
+    : stamped;
+
+  const finite = board.filter(
+    (city): city is typeof city & { changePct: number } =>
+      typeof city.changePct === "number" && Number.isFinite(city.changePct),
+  );
+  if (finite.length === 0) return null;
+
+  const byName = (
+    a: { name: string; slug?: string },
+    b: { name: string; slug?: string },
+  ) =>
+    a.name.localeCompare(b.name) ||
+    (a.slug ?? "").localeCompare(b.slug ?? "");
+
+  const gainer = finite
+    .filter((city) => city.changePct > 0)
+    .sort((a, b) => b.changePct - a.changePct || byName(a, b))[0];
+  const decliner = finite
+    .filter((city) => city.changePct < 0)
+    .sort((a, b) => a.changePct - b.changePct || byName(a, b))[0];
+
+  const parts: string[] = [];
+  if (gainer) {
+    parts.push(`${cityLabel(gainer)} ${signedMove(gainer.changePct)} (gainer)`);
+  }
+  if (decliner) {
+    parts.push(
+      `${cityLabel(decliner)} ${signedMove(decliner.changePct)} (decliner)`,
+    );
+  }
+  if (parts.length === 0) return null;
+  return `Biggest movers this week: ${parts.join(", ")}.`;
 }
 
 /**
@@ -161,6 +244,34 @@ export function formatAllTimeRange(
   if (!lowWeek || !highWeek) return null;
   const prints = range.weeks === 1 ? "1 print" : `${range.weeks} prints`;
   return `all-time range ${money(range.low.bpi)} (week of ${lowWeek}) to ${money(range.high.bpi)} (week of ${highWeek}) across ${prints}`;
+}
+
+/**
+ * National all-time range from the homepage national series.
+ *
+ * Dollars, weeks, and the print count come from buildTradingRange, the
+ * same helper as the city range (three prints minimum). The record suffix
+ * is classifyRecordPrint, the same rule as the city lines: strictly past
+ * the prior extreme, at least eight earlier weeks, ties omitted.
+ * Null when the national tape is shorter than that.
+ */
+export function formatNationalRangeLine(
+  history: readonly NationalHistoryPoint[],
+): string | null {
+  const prints: SnapshotLike[] = trackedNationalPoints(history).map((point) => ({
+    week_of: weekStamp(point.week_of)!,
+    bpi_score: point.avg_bpi,
+    change_pct: null,
+  }));
+  const range = buildTradingRange(prints);
+  if (!range) return null;
+  const lowWeek = weekStamp(range.low.weekOf);
+  const highWeek = weekStamp(range.high.weekOf);
+  if (!lowWeek || !highWeek) return null;
+  const count = range.weeks === 1 ? "1 print" : `${range.weeks} prints`;
+  const record = recordClause(classifyRecordPrint(prints)?.direction);
+  const flag = record ? `; ${record}` : "";
+  return `National BPI all-time range: ${money(range.low.bpi)} (week of ${lowWeek}) to ${money(range.high.bpi)} (week of ${highWeek}) across ${count}${flag}.`;
 }
 
 function rankClause(
