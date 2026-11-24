@@ -1,4 +1,5 @@
 import type { PurchasingPowerEntry } from "@/lib/types";
+import { compareByBurgersPerHour } from "@/lib/purchasing-power-rank";
 import Link from "next/link";
 
 interface PurchasingPowerProps {
@@ -48,7 +49,23 @@ export function PurchasingPower({ data }: PurchasingPowerProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {data.map((entry, i) => (
+        {/* Same order as the city-page rank: most burgers/hr, then name, then slug. */}
+        {[...data]
+          .sort((a, b) =>
+            compareByBurgersPerHour(
+              {
+                burgersPerHour: a.burgers_per_hour,
+                name: a.city,
+                slug: a.slug,
+              },
+              {
+                burgersPerHour: b.burgers_per_hour,
+                name: b.city,
+                slug: b.slug,
+              },
+            ),
+          )
+          .map((entry, i) => (
           <Link
             key={entry.slug}
             href={`/cities/${entry.slug}`}

@@ -12,6 +12,7 @@ import { createCollectStore } from "@/lib/collect-store";
 import { resolveLlmProvider } from "@/lib/llm";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { recordCollectRun } from "@/lib/collect-runs";
+import { burgersPerHour } from "@/lib/purchasing-power-rank";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -177,17 +178,17 @@ export async function GET(request: NextRequest) {
 
         for (const cityData of collectedCities) {
           const wage = wages[cityData.slug];
-          if (!wage || cityData.bpi <= 0) continue;
-
-          const burgersPerHour =
-            Math.round((wage.min_wage / cityData.bpi) * 100) / 100;
+          const burgersPerHourValue = wage
+            ? burgersPerHour(wage.min_wage, cityData.bpi)
+            : null;
+          if (!wage || burgersPerHourValue == null) continue;
 
           await store.upsertPurchasingPower({
             city_id: cityData.id,
             week_of: weekOf,
             min_wage: wage.min_wage,
             avg_bpi: cityData.bpi,
-            burgers_per_hour: burgersPerHour,
+            burgers_per_hour: burgersPerHourValue,
             wage_source: wage.source,
           });
         }

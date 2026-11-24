@@ -14,6 +14,10 @@ import { Header } from "@/components/header";
 import { PrintDelayNotice } from "@/components/print-delay-notice";
 import { Footer } from "@/components/footer";
 import { buildRankHistoryLine, buildRankLadder } from "@/lib/rank-ladder";
+import {
+  buildPurchasingPowerRank,
+  type PowerCity,
+} from "@/lib/purchasing-power-rank";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -111,6 +115,11 @@ export default async function CityPage({ params }: CityPageProps) {
   });
 
   const snap = cityData.currentSnapshot;
+  const purchasingPowerCities = purchasingPowerBoard(allCities, cityData);
+  const purchasingPowerRank = buildPurchasingPowerRank(
+    purchasingPowerCities,
+    cityData.city.slug,
+  );
   const faqItems = buildCityFaqItems({
     name: cityData.city.name,
     state: cityData.city.state,
@@ -128,6 +137,7 @@ export default async function CityPage({ params }: CityPageProps) {
     sampleSize: snap?.sample_size ?? null,
     peerCities,
     history: cityData.history,
+    purchasingPowerCities,
   });
   const faqJsonLd = buildFaqPageJsonLd(faqItems);
 
@@ -157,6 +167,7 @@ export default async function CityPage({ params }: CityPageProps) {
           tierStandings={tierStandings}
           rankLadder={rankLadder}
           rankHistoryLine={rankHistoryLine}
+          purchasingPowerRankLine={purchasingPowerRank?.rankLine ?? null}
         />
 
         {/* FAQ — mirrors FAQPage JSON-LD */}
@@ -222,6 +233,28 @@ export default async function CityPage({ params }: CityPageProps) {
   );
 }
 
+
+function purchasingPowerBoard(
+  cities: Awaited<ReturnType<typeof getAllCities>>,
+  cityData: Awaited<ReturnType<typeof getAllCities>>[number],
+): PowerCity[] {
+  const board: PowerCity[] = cities.map((c) => ({
+    slug: c.city.slug,
+    name: c.city.name,
+    bpi: c.currentSnapshot?.bpi_score ?? null,
+    weekOf: c.currentSnapshot?.week_of ?? null,
+  }));
+  const subject: PowerCity = {
+    slug: cityData.city.slug,
+    name: cityData.city.name,
+    bpi: cityData.currentSnapshot?.bpi_score ?? null,
+    weekOf: cityData.currentSnapshot?.week_of ?? null,
+  };
+  const index = board.findIndex((c) => c.slug === subject.slug);
+  if (index === -1) board.push(subject);
+  else board[index] = subject;
+  return board;
+}
 
 function findPeerCities(
   cities: Awaited<ReturnType<typeof getAllCities>>,
