@@ -8,6 +8,7 @@ import {
   type PriceTier,
 } from "@/lib/restaurant-utils";
 import { getMinimumWage } from "@/lib/wages";
+import { burgersPerHour } from "@/lib/purchasing-power-rank";
 import {
   buildCityRead,
   buildTapeStory,
@@ -43,6 +44,8 @@ interface CityProfileProps {
   tierStandings?: Partial<Record<PriceTier, CityTierStanding>>;
   rankLadder?: RankLadder | null;
   rankHistoryLine?: string | null;
+  /** Null when this city has no minimum-wage row. */
+  purchasingPowerRankLine?: string | null;
 }
 
 function findWebsite(name: string, prices: RawPrice[]): string | null {
@@ -59,6 +62,7 @@ export function CityProfile({
   tierStandings = {},
   rankLadder = null,
   rankHistoryLine = null,
+  purchasingPowerRankLine = null,
 }: CityProfileProps) {
   const { city, currentSnapshot, spotlight } = data;
   const bpi = currentSnapshot?.bpi_score ?? null;
@@ -114,10 +118,8 @@ export function CityProfile({
     : null;
 
   const wage = getMinimumWage(city.slug);
-  const burgersPerHour =
-    wage && bpi != null && bpi > 0
-      ? Math.round((wage.min_wage / bpi) * 100) / 100
-      : null;
+  const burgersPerHourValue =
+    wage && bpi != null ? burgersPerHour(wage.min_wage, bpi) : null;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-14">
@@ -525,7 +527,7 @@ export function CityProfile({
       )}
 
       {/* Local Purchasing Power */}
-      {wage && burgersPerHour != null && (
+      {wage && burgersPerHourValue != null && (
         <div className="bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter p-6 mb-8">
           <div className="flex items-center gap-3 mb-4">
             <span className="text-lg">💪</span>
@@ -541,7 +543,7 @@ export function CityProfile({
           <div className="flex flex-wrap items-end gap-6">
             <div>
               <span className="bpi-number text-3xl font-bold text-ketchup dark:text-mustard">
-                {burgersPerHour.toFixed(1)}
+                {burgersPerHourValue.toFixed(1)}
               </span>
               <span className="text-sm text-gray-400 ml-2 uppercase tracking-wider">
                 burgers/hr
@@ -549,10 +551,15 @@ export function CityProfile({
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               ${wage.min_wage.toFixed(2)}/hr {wage.source} min wage buys{" "}
-              {burgersPerHour.toFixed(1)} of the ${bpi!.toFixed(2)} BPI basket.
+              {burgersPerHourValue.toFixed(1)} of the ${bpi!.toFixed(2)} BPI basket.
               The market clears; your wallet may not.
             </div>
           </div>
+          {purchasingPowerRankLine && (
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              {purchasingPowerRankLine}
+            </p>
+          )}
         </div>
       )}
 

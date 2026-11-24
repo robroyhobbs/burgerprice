@@ -3,6 +3,10 @@ import {
   buildCityRecordFaqAnswer,
   type SnapshotLike,
 } from "./city-readout";
+import {
+  buildPurchasingPowerFaq,
+  type PowerCity,
+} from "./purchasing-power-rank";
 
 const DEFAULT_BASE = "https://burgerprice.com";
 
@@ -184,6 +188,11 @@ export interface CityFaqContext {
   peerCities: { name: string; state: string; bpi: number }[];
   /** Full weekly tape. Same series the Trading Range block reads. */
   history?: readonly SnapshotLike[] | null;
+  /**
+   * This week's city prints, used to rank purchasing power.
+   * Omit the field to skip that FAQ entry.
+   */
+  purchasingPowerCities?: readonly PowerCity[] | null;
 }
 
 /**
@@ -250,6 +259,11 @@ export function buildCityFaqItems(ctx: CityFaqContext): FaqItem[] {
       a: recordAnswer,
     });
   }
+
+  const powerFaq = ctx.purchasingPowerCities
+    ? buildPurchasingPowerFaq(ctx.purchasingPowerCities, ctx.slug)
+    : null;
+  if (powerFaq) items.push(powerFaq);
 
   items.push({
     q: `How do I read ${ctx.name}'s BPI?`,
