@@ -6,11 +6,15 @@ import type { PowerCity, WageTable } from "./purchasing-power-rank.ts";
 register(new URL("./ts-resolve-hook.mjs", import.meta.url));
 
 const {
+  PURCHASING_POWER_BOARD_QUESTION,
+  buildPurchasingPowerBoard,
+  buildPurchasingPowerBoardFaq,
   buildPurchasingPowerFaq,
   buildPurchasingPowerRank,
   burgersPerHour,
   compareByBurgersPerHour,
 } = await import("./purchasing-power-rank.ts");
+const { getAllWages } = await import("./wages.ts");
 const { buildCityFaqItems, buildFaqPageJsonLd } = await import("./json-ld.ts");
 
 const WEEK = "2026-11-23";
@@ -288,7 +292,220 @@ describe("buildCityFaqItems purchasing power", () => {
     assert.equal(questions.indexOf(POWER_Q), questions.indexOf(RECORD_Q) + 1);
     assert.equal(questions.indexOf(READ_Q), questions.indexOf(POWER_Q) + 1);
   });
+});
 
+describe("buildPurchasingPowerBoard", () => {
+  it("ranks most burgers per hour first and matches every city-page rank", () => {
+    const rows = buildPurchasingPowerBoard(BOARD, { wages: WAGES, weekOf: WEEK });
+    assert.ok(rows);
+    assert.deepEqual(
+      rows.map((row) => row.slug),
+      ["seattle-wa", "portland-or", "chicago-il", "boston-ma", "austin-tx"],
+    );
+    for (const row of rows) {
+      const rank = buildPurchasingPowerRank(BOARD, row.slug, WAGES);
+      assert.ok(rank);
+      assert.equal(row.rank, rank.rank);
+      assert.equal(row.burgersPerHour, rank.burgersPerHour);
+      assert.equal(row.minWage, rank.minWage);
+      assert.equal(row.bpi, rank.bpi);
+      assert.equal(row.wageSource, rank.wageSource);
+    }
+    assert.equal(rows[0].burgersPerHour.toFixed(1), "2.0");
+    const boston = rows.find((row) => row.slug === "boston-ma");
+    assert.equal(boston?.rank, 4);
+    assert.equal(boston?.burgersPerHour.toFixed(1), "0.8");
+    assert.equal(boston?.minWage.toFixed(2), "15.00");
+  });
+
+  it("keeps a 1-decimal display tie in two-decimal order", () => {
+    const rows = buildPurchasingPowerBoard(BOARD, { wages: WAGES });
+    assert.ok(rows);
+    const portland = rows.find((row) => row.slug === "portland-or");
+    const chicago = rows.find((row) => row.slug === "chicago-il");
+    assert.ok(portland);
+    assert.ok(chicago);
+    assert.equal(portland.burgersPerHour.toFixed(1), "1.2");
+    assert.equal(chicago.burgersPerHour.toFixed(1), "1.2");
+    assert.equal(portland.rank + 1, chicago.rank);
+  });
+
+  it("breaks an exact rate tie by city name, then slug", () => {
+    const tied: PowerCity[] = [
+      city("tie-b", "Portland", 10),
+      city("tie-a", "Chicago", 10),
+      city("tie-c", "Chicago", 10),
+    ];
+    const wages: WageTable = {
+      "tie-b": { min_wage: 10, source: "city" },
+      "tie-a": { min_wage: 10, source: "city" },
+      "tie-c": { min_wage: 10, source: "state" },
+    };
+    const rows = buildPurchasingPowerBoard(tied, { wages });
+    assert.deepEqual(
+      rows?.map((row) => row.slug),
+      ["tie-a", "tie-c", "tie-b"],
+    );
+    assert.deepEqual(
+      rows?.map((row) => row.rank),
+      [1, 2, 3],
+    );
+  });
+
+  it("omits cities with no wage, no BPI, or a non-positive BPI, and drops duplicate slugs", () => {
+    const rows = buildPurchasingPowerBoard(
+      [
+        city("seattle-wa", "Seattle", 10),
+        city("seattle-wa", "Seattle Again", 1),
+        city("denver-co", "Denver", 8),
+        city("ghost", "Ghost", null),
+        city("zero", "Zero", 0),
+        city("boston-ma", "Boston", 18.75),
+      ],
+      {
+        wages: {
+          ...WAGES,
+          zero: { min_wage: 15, source: "state" },
+          ghost: { min_wage: 15, source: "city" },
+        },
+      },
+    );
+    assert.ok(rows);
+    assert.deepEqual(
+      rows.map((row) => row.slug),
+      ["seattle-wa", "boston-ma"],
+    );
+    assert.equal(rows[0].name, "Seattle");
+    assert.equal(rows[0].burgersPerHour, 2);
+  });
+
+  it("returns null when fewer than two cities can be ranked", () => {
+    assert.equal(
+      buildPurchasingPowerBoard([city("seattle-wa", "Seattle", 10)], {
+        wages: WAGES,
+      }),
+      null,
+    );
+    assert.equal(
+      buildPurchasingPowerBoard(
+        [
+          city("seattle-wa", "Seattle", null),
+          city("boston-ma", "Boston", 0),
+        ],
+        { wages: WAGES },
+      ),
+      null,
+    );
+    assert.equal(
+      buildPurchasingPowerBoard(
+        [city("no-wage", "Nowhere", 12), city("also-none", "Also", 9)],
+        { wages: WAGES },
+      ),
+      null,
+    );
+  });
+
+  it("ranks only the requested week, including a timestamp week key", () => {
+    const mixed: PowerCity[] = [
+      city("seattle-wa", "Seattle", 10, `${WEEK}T00:00:00.000Z`),
+      city("portland-or", "Portland", 5, "2026-11-16"),
+      city("chicago-il", "Chicago", 10, WEEK),
+      city("boston-ma", "Boston", 18.75, WEEK),
+      city("austin-tx", "Austin", null, WEEK),
+    ];
+    const rows = buildPurchasingPowerBoard(mixed, {
+      wages: WAGES,
+      weekOf: WEEK,
+    });
+    assert.deepEqual(
+      rows?.map((row) => row.slug),
+      ["seattle-wa", "chicago-il", "boston-ma"],
+    );
+    assert.equal(
+      buildPurchasingPowerBoard(mixed, { wages: WAGES, weekOf: "2026-11-16" }),
+      null,
+    );
+    const seattle = buildPurchasingPowerRank(mixed, "seattle-wa", WAGES);
+    assert.equal(rows?.[0].rank, seattle?.rank);
+    assert.equal(rows?.length, seattle?.total);
+  });
+
+  it("carries state through and reads the shared wage table", () => {
+    const live: PowerCity[] = [
+      { ...city("boston-ma", "Boston", 18.36), state: "MA" },
+      { ...city("seattle-wa", "Seattle", 14.41), state: "WA" },
+      { ...city("new-york-ny", "New York", 21.84), state: "NY" },
+    ];
+    const rows = buildPurchasingPowerBoard(live, { weekOf: WEEK });
+    assert.ok(rows);
+    assert.equal(rows[0].slug, "seattle-wa");
+    assert.equal(rows[0].state, "WA");
+    assert.equal(rows[0].minWage, 21.3);
+    assert.equal(rows[0].wageSource, "city");
+    assert.equal(rows[0].bpi, 14.41);
+    assert.equal(rows[0].burgersPerHour.toFixed(1), "1.5");
+    const boston = rows.find((row) => row.slug === "boston-ma");
+    assert.ok(boston);
+    assert.equal(boston.state, "MA");
+    assert.equal(boston.minWage, 15);
+    assert.equal(boston.bpi, 18.36);
+    assert.equal(boston.burgersPerHour.toFixed(1), "0.8");
+    assert.equal(
+      boston.rank,
+      buildPurchasingPowerRank(live, "boston-ma")?.rank,
+    );
+  });
+
+  it("agrees with the city-page rank for every city on the shared wage table", () => {
+    const wages = getAllWages();
+    const slugs = Object.keys(wages);
+    assert.equal(slugs.length >= 2, true);
+    const cities: PowerCity[] = slugs.map((slug, index) =>
+      city(slug, wages[slug].city, 10 + index, WEEK),
+    );
+    const rows = buildPurchasingPowerBoard(cities, { weekOf: WEEK });
+    assert.ok(rows);
+    assert.equal(rows.length, slugs.length);
+    for (const row of rows) {
+      const rank = buildPurchasingPowerRank(cities, row.slug);
+      assert.equal(row.rank, rank?.rank);
+      assert.equal(row.burgersPerHour, rank?.burgersPerHour);
+      assert.equal(row.minWage, wages[row.slug].min_wage);
+    }
+    assert.equal(rows[0].burgersPerHour >= rows[rows.length - 1].burgersPerHour, true);
+  });
+});
+
+describe("buildPurchasingPowerBoardFaq", () => {
+  it("names the leader with the same rank line the city card prints", () => {
+    const rows = buildPurchasingPowerBoard(BOARD, { wages: WAGES, weekOf: WEEK });
+    const faq = buildPurchasingPowerBoardFaq(rows);
+    const leader = buildPurchasingPowerRank(BOARD, "seattle-wa", WAGES);
+    assert.ok(faq);
+    assert.ok(leader);
+    assert.equal(faq.q, PURCHASING_POWER_BOARD_QUESTION);
+    assert.equal(faq.q, "Which city's minimum wage buys the most burgers?");
+    assert.equal(
+      faq.a,
+      `Seattle. $20.00/hr city min wage, BPI $10.00, 2.0 burgers/hr. ${leader.rankLine}`,
+    );
+    assert.equal(faq.a.includes("!"), false);
+  });
+
+  it("stays null when the board is hidden", () => {
+    assert.equal(buildPurchasingPowerBoardFaq(null), null);
+    assert.equal(
+      buildPurchasingPowerBoardFaq(
+        buildPurchasingPowerBoard([city("seattle-wa", "Seattle", 10)], {
+          wages: WAGES,
+        }),
+      ),
+      null,
+    );
+  });
+});
+
+describe("buildCityFaqItems purchasing power", () => {
   it("drops the entry when wage data is missing and leaves the other questions", () => {
     const items = buildCityFaqItems({
       ...cityFaqContext([city("denver-co", "Denver", 10)], null),
