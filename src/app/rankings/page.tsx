@@ -31,6 +31,13 @@ import {
   type BoardShakeupData,
   type RankStreak,
 } from "@/lib/rank-ladder";
+import {
+  buildPurchasingPowerBoard,
+  buildPurchasingPowerBoardFaq,
+  type PowerCity,
+  type PurchasingPowerFaq,
+} from "@/lib/purchasing-power-rank";
+import { PurchasingPowerBoard } from "@/components/purchasing-power-board";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -110,9 +117,20 @@ function rankCities(cities: CityDashboardData[]): RankedCity[] {
     });
 }
 
+type FaqItem = { q: string; a: string };
+
+function rankingsFaqItems(power: PurchasingPowerFaq | null): FaqItem[] {
+  if (!power) return FAQ_ITEMS;
+  const items = [...FAQ_ITEMS];
+  const dig = items.findIndex((item) => item.q.startsWith("Where can I dig"));
+  items.splice(dig === -1 ? items.length : dig, 0, power);
+  return items;
+}
+
 function buildJsonLd(
   ranked: RankedCity[],
   weekOf: string | null,
+  faqItems: readonly FaqItem[],
 ): Record<string, unknown>[] {
   const base = getSiteBaseUrl();
   const pageUrl = `${base}/rankings`;
@@ -138,7 +156,7 @@ function buildJsonLd(
   const faqPage = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: FAQ_ITEMS.map((item) => ({
+    mainEntity: faqItems.map((item) => ({
       "@type": "Question",
       name: item.q,
       acceptedAnswer: {
@@ -222,7 +240,17 @@ export default async function RankingsPage() {
   const bottomReign = shakeup ? buildBottomStreak(cities) : null;
   const records = findRecordPrints(cities);
 
-  const jsonLd = buildJsonLd(ranked, weekOf);
+  const powerCities: PowerCity[] = cities.map((c) => ({
+    slug: c.city.slug,
+    name: c.city.name,
+    state: c.city.state,
+    bpi: c.currentSnapshot?.bpi_score ?? null,
+    weekOf: c.currentSnapshot?.week_of ?? null,
+  }));
+  const powerBoard = buildPurchasingPowerBoard(powerCities, { weekOf });
+  const faqItems = rankingsFaqItems(buildPurchasingPowerBoardFaq(powerBoard));
+
+  const jsonLd = buildJsonLd(ranked, weekOf, faqItems);
   const natUp = nationalChange !== null && nationalChange > 0;
   const natDown = nationalChange !== null && nationalChange < 0;
 
@@ -425,13 +453,15 @@ export default async function RankingsPage() {
           </p>
         </div>
 
+        <PurchasingPowerBoard rows={powerBoard} />
+
         {/* FAQ */}
         <section className="max-w-7xl mx-auto px-6 py-10">
           <h2 className="font-headline text-2xl text-ketchup dark:text-mustard mb-6">
             Rankings FAQ
           </h2>
           <div className="space-y-4">
-            {FAQ_ITEMS.map((item) => (
+            {faqItems.map((item) => (
               <details
                 key={item.q}
                 className="group bg-white dark:bg-grill-light rounded-2xl border border-gray-200 dark:border-grill-lighter px-5 py-4"

@@ -16,10 +16,12 @@ export interface PowerCity {
   name: string;
   bpi: number | null;
   /**
-   * Week of this print. When the subject city has one, only cities on that
-   * same week are ranked — the homepage section is one week, not a mix.
+   * Week of this print. When a week is in scope, only cities on that same
+   * week are ranked — one print, not a mix.
    */
   weekOf?: string | null;
+  /** Postal abbreviation. The rankings board prints it; the rank line does not. */
+  state?: string;
 }
 
 export interface PurchasingPowerSortable {
@@ -49,6 +51,35 @@ export interface PurchasingPowerFaq {
   q: string;
   a: string;
 }
+
+/** One row on the /rankings purchasing-power board. Most burgers/hr is rank 1. */
+export interface PurchasingPowerBoardRow {
+  rank: number;
+  slug: string;
+  name: string;
+  state: string | null;
+  minWage: number;
+  wageSource: WageRate["source"];
+  bpi: number;
+  /** Two-decimal burgers/hr. Same rounding the city card stores; print with toFixed(1). */
+  burgersPerHour: number;
+}
+
+export interface PurchasingPowerBoardQuery {
+  wages?: WageTable;
+  /**
+   * When this is a week (YYYY-MM-DD, or a timestamp that starts with one),
+   * only cities on that print are ranked — the same week cut the city card uses.
+   * Omit it to rank every city that has a wage and a positive BPI.
+   */
+  weekOf?: string | null;
+}
+
+/** The board stays off the page until at least two cities can be ranked. */
+const MIN_BOARD_ROWS = 2;
+
+export const PURCHASING_POWER_BOARD_QUESTION =
+  "Which city's minimum wage buys the most burgers?";
 
 /**
  * Burgers one hour of minimum wage buys: wage / BPI, rounded to 2 decimals.
@@ -90,30 +121,7 @@ export function buildPurchasingPowerRank(
   if (!subject || !subjectWage || subject.bpi == null) return null;
   if (burgersPerHour(subjectWage.min_wage, subject.bpi) == null) return null;
 
-  const subjectWeek = weekKey(subject.weekOf);
-  const rows: RankedRow[] = [];
-  const seen = new Set<string>();
-
-  for (const city of cities) {
-    if (seen.has(city.slug)) continue;
-    seen.add(city.slug);
-    if (subjectWeek && weekKey(city.weekOf) !== subjectWeek) continue;
-    const wage = wages[city.slug];
-    if (!wage || city.bpi == null) continue;
-    const rate = burgersPerHour(wage.min_wage, city.bpi);
-    if (rate == null) continue;
-    rows.push({
-      slug: city.slug,
-      name: city.name,
-      minWage: wage.min_wage,
-      wageSource: wage.source,
-      bpi: city.bpi,
-      burgersPerHour: rate,
-    });
-  }
-
-  rows.sort((a, b) => compareByBurgersPerHour(a, b));
-
+  const rows = collectRankedRows(cities, wages, weekKey(subject.weekOf));
   const index = rows.findIndex((row) => row.slug === slug);
   if (index === -1) return null;
 
@@ -158,10 +166,100 @@ export function buildPurchasingPowerFaq(
   };
 }
 
+/**
+ * Full purchasing-power board for one print.
+ * Most burgers/hr first — the same order `buildPurchasingPowerRank` uses —
+ * so a city's rank here matches the line on its city page.
+ * Omits a city with no wage or no positive BPI. Null when fewer than two
+ * cities remain, which is the signal to hide the section.
+ */
+export function buildPurchasingPowerBoard(
+  cities: readonly PowerCity[],
+  query: PurchasingPowerBoardQuery = {},
+): PurchasingPowerBoardRow[] | null {
+  const rows = collectRankedRows(
+    cities,
+    query.wages ?? getAllWages(),
+    weekKey(query.weekOf),
+  );
+  if (rows.length < MIN_BOARD_ROWS) return null;
+  return rows.map((row, index) => ({
+    rank: index + 1,
+    slug: row.slug,
+    name: row.name,
+    state: row.state,
+    minWage: row.minWage,
+    wageSource: row.wageSource,
+    bpi: row.bpi,
+    burgersPerHour: row.burgersPerHour,
+  }));
+}
+
+/**
+ * Rankings FAQ entry for the visible accordion and FAQPage JSON-LD.
+ * Null when the board itself is hidden, so the two stay in lockstep.
+ * The rank sentence is the same line the leader's city card prints.
+ */
+export function buildPurchasingPowerBoardFaq(
+  rows: readonly PurchasingPowerBoardRow[] | null,
+): PurchasingPowerFaq | null {
+  if (!rows || rows.length < MIN_BOARD_ROWS) return null;
+  const leader = rows[0];
+  const ranked: RankedRow[] = rows.map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    state: row.state,
+    minWage: row.minWage,
+    wageSource: row.wageSource,
+    bpi: row.bpi,
+    burgersPerHour: row.burgersPerHour,
+  }));
+  return {
+    q: PURCHASING_POWER_BOARD_QUESTION,
+    a: `${leader.name}. $${leader.minWage.toFixed(2)}/hr ${leader.wageSource} min wage, BPI $${leader.bpi.toFixed(2)}, ${leader.burgersPerHour.toFixed(1)} burgers/hr. ${formatRankLine(ranked, 0)}`,
+  };
+}
+
 interface RankedRow extends PurchasingPowerSortable {
+  state: string | null;
   minWage: number;
   wageSource: WageRate["source"];
   bpi: number;
+}
+
+/**
+ * Cities that can be ranked on `week` (or on any week, when `week` is null).
+ * First slug wins. Sort is the shared purchasing-power order.
+ */
+function collectRankedRows(
+  cities: readonly PowerCity[],
+  wages: WageTable,
+  week: string | null,
+): RankedRow[] {
+  const rows: RankedRow[] = [];
+  const seen = new Set<string>();
+
+  for (const city of cities) {
+    if (seen.has(city.slug)) continue;
+    seen.add(city.slug);
+    if (week && weekKey(city.weekOf) !== week) continue;
+    const wage = wages[city.slug];
+    if (!wage || city.bpi == null) continue;
+    const rate = burgersPerHour(wage.min_wage, city.bpi);
+    if (rate == null) continue;
+    rows.push({
+      slug: city.slug,
+      name: city.name,
+      state: city.state ?? null,
+      minWage: wage.min_wage,
+      wageSource: wage.source,
+      bpi: city.bpi,
+      burgersPerHour: rate,
+    });
+  }
+
+  rows.sort((a, b) => compareByBurgersPerHour(a, b));
+  return rows;
 }
 
 function formatRankLine(rows: RankedRow[], index: number): string {
