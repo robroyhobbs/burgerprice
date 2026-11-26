@@ -9,6 +9,7 @@ import { NewsletterEdition } from "@/components/newsletter-edition";
 import { buildWeekSameStoreReads } from "@/lib/same-store";
 import { findRecordPrintsForWeek } from "@/lib/city-readout";
 import { buildBoardShakeupForWeek } from "@/lib/rank-ladder";
+import { buildPurchasingPowerBriefForWeek } from "@/lib/newsletter-purchasing-power";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ShareStrip } from "@/components/share-strip";
 import {
@@ -164,6 +165,7 @@ export default async function NewsletterPage() {
   const weekKey = String(latest.week_of).slice(0, 10);
   const shakeup = buildBoardShakeupForWeek(cities, weekKey);
   const records = findRecordPrintsForWeek(cities, weekKey);
+  const purchasingPower = buildPurchasingPowerBriefForWeek(cities, weekKey);
   const caption = buildNewsletterCaption({
     weekOf: latest.week_of,
     headline: latest.headline,
@@ -193,6 +195,7 @@ export default async function NewsletterPage() {
             sections={latest.sections}
             shakeup={shakeup}
             records={records}
+            purchasingPower={purchasingPower}
             sameStore={Object.fromEntries(
               buildWeekSameStoreReads(cities, weekKey),
             )}
