@@ -13,6 +13,7 @@ import { EditionNav } from "@/components/edition-nav";
 import { buildWeekSameStoreReads } from "@/lib/same-store";
 import { findRecordPrintsForWeek } from "@/lib/city-readout";
 import { buildBoardShakeupForWeek } from "@/lib/rank-ladder";
+import { buildPurchasingPowerBriefForWeek } from "@/lib/newsletter-purchasing-power";
 import {
   buildNewsletterCaption,
   newsletterOgPath,
@@ -104,6 +105,7 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
   const weekKey = String(newsletter.week_of).slice(0, 10);
   const shakeup = buildBoardShakeupForWeek(cities, weekKey);
   const records = findRecordPrintsForWeek(cities, weekKey);
+  const purchasingPower = buildPurchasingPowerBriefForWeek(cities, weekKey);
   const shareUrl = newsletterShareUrl(newsletter.week_of);
   const caption = buildNewsletterCaption({
     weekOf: newsletter.week_of,
@@ -166,6 +168,7 @@ export default async function NewsletterEditionPage({ params }: PageProps) {
             sameStore={sameStore}
             shakeup={shakeup}
             records={records}
+            purchasingPower={purchasingPower}
           />
 
           <div className="max-w-4xl mx-auto">

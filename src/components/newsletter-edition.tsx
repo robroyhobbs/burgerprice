@@ -8,6 +8,11 @@ import {
   recordPrintTokens,
   type CityRecordPrint,
 } from "@/lib/city-readout";
+import {
+  purchasingPowerBriefTokens,
+  type PurchasingPowerBrief,
+  type PurchasingPowerToken,
+} from "@/lib/newsletter-purchasing-power";
 import Link from "next/link";
 
 const cityLinkCls =
@@ -23,6 +28,8 @@ interface NewsletterEditionProps {
   shakeup?: BoardShakeupData | null;
   /** Record highs/lows set on this edition's week. Empty weeks omit the line. */
   records?: { highs: CityRecordPrint[]; lows: CityRecordPrint[] } | null;
+  /** Purchasing power at this edition's BPI. Omitted when the week can't be ranked. */
+  purchasingPower?: PurchasingPowerBrief | null;
 }
 
 function tapeKey(name: string): string {
@@ -85,6 +92,7 @@ export function NewsletterEdition({
   sameStore,
   shakeup,
   records,
+  purchasingPower,
 }: NewsletterEditionProps) {
   const tapeReads = sameStore
     ? sections.theTape.map((m) => sameStore[tapeKey(m.city)]).filter(Boolean)
@@ -111,6 +119,8 @@ export function NewsletterEdition({
       </div>
 
       {shakeup && <BoardShakeupSection shakeup={shakeup} records={records} />}
+
+      {purchasingPower && <PurchasingPowerSection brief={purchasingPower} />}
 
       {/* Market Overview */}
       <Section title="MARKET OVERVIEW" icon="📊">
@@ -289,6 +299,56 @@ function BoardShakeupSection({
       <RecordPrintLine direction="high" cities={records?.highs ?? []} />
       <RecordPrintLine direction="low" cities={records?.lows ?? []} />
     </Section>
+  );
+}
+
+function PurchasingPowerSection({ brief }: { brief: PurchasingPowerBrief }) {
+  const lines = purchasingPowerBriefTokens(brief);
+  if (lines.best.length === 0) return null;
+  return (
+    <Section title="PURCHASING POWER" icon="💪">
+      <p className="text-sm text-gray-300 leading-relaxed">
+        <PurchasingPowerLine tokens={lines.best} />
+        {lines.toughest && (
+          <>
+            {" "}
+            <PurchasingPowerLine tokens={lines.toughest} />
+          </>
+        )}
+      </p>
+      <p className="mt-3 text-[11px] font-mono text-green-500/60 leading-relaxed">
+        <Link
+          href="/rankings#purchasing-power"
+          className="underline hover:text-green-400"
+        >
+          See the Purchasing Power Board →
+        </Link>
+      </p>
+    </Section>
+  );
+}
+
+function PurchasingPowerLine({
+  tokens,
+}: {
+  tokens: readonly PurchasingPowerToken[];
+}) {
+  return (
+    <>
+      {tokens.map((token, i) =>
+        token.type === "city" ? (
+          <Link
+            key={`${token.slug}-${i}`}
+            href={`/cities/${token.slug}`}
+            className={cityLinkCls}
+          >
+            {token.name}
+          </Link>
+        ) : (
+          <Fragment key={`${token.type}-${i}`}>{token.text}</Fragment>
+        ),
+      )}
+    </>
   );
 }
 
