@@ -11,6 +11,7 @@ import { getMinimumWage } from "@/lib/wages";
 import { burgersPerHour } from "@/lib/purchasing-power-rank";
 import {
   buildCityRead,
+  buildMomentumReadout,
   buildTapeStory,
   buildTradingRange,
   buildTradingRangeStory,
@@ -100,6 +101,7 @@ export function CityProfile({
   const tradingRangeStory = tradingRange
     ? buildTradingRangeStory(city.name, tradingRange)
     : null;
+  const momentum = buildMomentumReadout(data.history);
 
   const tierSummary = summarizePriceTiers(rawPrices);
 
@@ -342,6 +344,32 @@ export function CityProfile({
               <p className="mt-3 text-sm md:text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
                 {tradingRangeStory}
               </p>
+            </div>
+          )}
+          {(momentum.streakLine || momentum.averageLine) && (
+            <div
+              id="momentum"
+              className="mt-5 pt-4 border-t border-gray-100 dark:border-grill-lighter scroll-mt-24"
+            >
+              <div className="mb-2">
+                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-500 dark:text-gray-400">
+                  Momentum
+                </span>
+              </div>
+              {momentum.streakLine && (
+                <p className="text-sm md:text-[15px] font-medium text-gray-900 dark:text-white leading-relaxed">
+                  {momentum.streakLine}
+                </p>
+              )}
+              {momentum.averageLine && (
+                <p
+                  className={`text-sm md:text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed${
+                    momentum.streakLine ? " mt-1" : ""
+                  }`}
+                >
+                  {momentum.averageLine}
+                </p>
+              )}
             </div>
           )}
         </div>
