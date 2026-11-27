@@ -261,6 +261,8 @@ const POWER_Q = "How many burgers can an hour of minimum wage buy in Portland?";
 const READ_Q = "How do I read Portland's BPI?";
 const RECORD_Q =
   "What's Portland's highest and lowest Burger Price Index on record?";
+const MOMENTUM_Q =
+  "Is Portland's Burger Price Index trending up or down?";
 
 describe("buildCityFaqItems purchasing power", () => {
   it("inserts the entry before the BPI explainer and mirrors it in JSON-LD", () => {
@@ -289,7 +291,8 @@ describe("buildCityFaqItems purchasing power", () => {
     }));
     const items = buildCityFaqItems(cityFaqContext(BOARD, history));
     const questions = items.map((item) => item.q);
-    assert.equal(questions.indexOf(POWER_Q), questions.indexOf(RECORD_Q) + 1);
+    assert.equal(questions.indexOf(MOMENTUM_Q), questions.indexOf(RECORD_Q) + 1);
+    assert.equal(questions.indexOf(POWER_Q), questions.indexOf(MOMENTUM_Q) + 1);
     assert.equal(questions.indexOf(READ_Q), questions.indexOf(POWER_Q) + 1);
   });
 });

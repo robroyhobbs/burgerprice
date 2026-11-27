@@ -56,6 +56,8 @@ function faqContext(
 
 const RECORD_Q =
   "What's Portland's highest and lowest Burger Price Index on record?";
+const MOMENTUM_Q =
+  "Is Portland's Burger Price Index trending up or down?";
 
 describe("buildCityRecordFaqAnswer", () => {
   it("states the record high when this week is the top of the range", () => {
@@ -194,10 +196,12 @@ describe("buildCityFaqItems record entry", () => {
       "What's the cheapest and most expensive burger in Portland?",
     );
     const record = questions.indexOf(RECORD_Q);
+    const momentum = questions.indexOf(MOMENTUM_Q);
     const read = questions.indexOf("How do I read Portland's BPI?");
     assert.ok(cheap >= 0);
     assert.equal(record, cheap + 1);
-    assert.equal(read, record + 1);
+    assert.equal(momentum, record + 1);
+    assert.equal(read, momentum + 1);
     assert.equal(items[record].a, buildCityRecordFaqAnswer("Portland", history));
 
     const jsonLd = buildFaqPageJsonLd(items);
@@ -230,9 +234,10 @@ describe("buildCityFaqItems record entry", () => {
       }),
     );
     const questions = noTape.map((item) => item.q);
+    assert.equal(questions.indexOf(RECORD_Q), questions.indexOf(MOMENTUM_Q) - 1);
     assert.equal(
-      questions.indexOf(RECORD_Q),
-      questions.indexOf("How do I read Portland's BPI?") - 1,
+      questions.indexOf("How do I read Portland's BPI?"),
+      questions.indexOf(MOMENTUM_Q) + 1,
     );
     assert.equal(
       questions.includes(

@@ -1,5 +1,6 @@
 import type { CityDashboardData } from "./types";
 import {
+  buildCityMomentumFaq,
   buildCityRecordFaqAnswer,
   type SnapshotLike,
 } from "./city-readout";
@@ -259,6 +260,9 @@ export function buildCityFaqItems(ctx: CityFaqContext): FaqItem[] {
       a: recordAnswer,
     });
   }
+
+  const momentumFaq = buildCityMomentumFaq(ctx.name, ctx.history);
+  if (momentumFaq) items.push(momentumFaq);
 
   const powerFaq = ctx.purchasingPowerCities
     ? buildPurchasingPowerFaq(ctx.purchasingPowerCities, ctx.slug)

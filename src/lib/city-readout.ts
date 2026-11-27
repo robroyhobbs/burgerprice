@@ -301,6 +301,138 @@ export function buildTradingRangeStory(
   return `${cityName} sits mid-range: ${r.offHighPct.toFixed(1)}% off the high, ${r.offLowPct.toFixed(1)}% above the low.`;
 }
 
+/** Tracked prints in the 4-week average. The city page hides the line below this. */
+export const FOUR_WEEK_AVERAGE_PRINTS = 4;
+
+export type StreakDirection = "up" | "down" | "flat";
+
+export interface PrintStreak {
+  direction: StreakDirection;
+  /**
+   * Consecutive prints that moved this way. Flat is always 1: a flat print
+   * breaks the run, and the line does not count a flat streak.
+   */
+  length: number;
+}
+
+/**
+ * Current run of weekly prints moving the same way.
+ *
+ * Reads selectTrackedPrints, oldest week first — the same series as the
+ * Trading Range. Each print is strictly above, strictly below, or equal to
+ * the prior print. Equal is flat and ends an up or down run. A missing
+ * collection week is not a print, so it does not break the run. Null when
+ * fewer than two tracked prints.
+ */
+export function buildPrintStreak(
+  history: readonly SnapshotLike[] | null | undefined,
+): PrintStreak | null {
+  const prints = selectTrackedPrints(history);
+  if (prints.length < 2) return null;
+
+  const last = prints.length - 1;
+  const delta = prints[last].bpi_score - prints[last - 1].bpi_score;
+  if (delta === 0) return { direction: "flat", length: 1 };
+
+  const direction: StreakDirection = delta > 0 ? "up" : "down";
+  let length = 1;
+  for (let i = last - 1; i >= 1; i--) {
+    const step = prints[i].bpi_score - prints[i - 1].bpi_score;
+    if (step === 0) break;
+    const stepDirection: StreakDirection = step > 0 ? "up" : "down";
+    if (stepDirection !== direction) break;
+    length++;
+  }
+  return { direction, length };
+}
+
+/** "Up 3 straight prints" / "Down 2 straight prints" / "Flat vs last print". */
+export function formatPrintStreak(streak: PrintStreak): string {
+  if (streak.direction === "flat") return "Flat vs last print";
+  const label = streak.direction === "up" ? "Up" : "Down";
+  const noun = streak.length === 1 ? "print" : "prints";
+  return `${label} ${streak.length} straight ${noun}`;
+}
+
+export interface FourWeekAverage {
+  /** Mean of the latest four tracked prints, rounded to cents. */
+  average: number;
+  latest: number;
+  /** Latest print minus the rounded average, in cents. Positive is above. */
+  delta: number;
+}
+
+function toCents(amount: number): number {
+  return Math.round(amount * 100);
+}
+
+/**
+ * 4-week average BPI. The window is the latest four tracked prints,
+ * including this print. Null below four prints. The mean is taken in
+ * cents so a half-cent average rounds to the dollar the sentence prints.
+ * Delta is this print minus that rounded average.
+ */
+export function buildFourWeekAverage(
+  history: readonly SnapshotLike[] | null | undefined,
+): FourWeekAverage | null {
+  const prints = selectTrackedPrints(history);
+  if (prints.length < FOUR_WEEK_AVERAGE_PRINTS) return null;
+
+  const cents = prints
+    .slice(-FOUR_WEEK_AVERAGE_PRINTS)
+    .map((print) => toCents(print.bpi_score));
+  const sum = cents.reduce((total, value) => total + value, 0);
+  const averageCents = Math.round(sum / FOUR_WEEK_AVERAGE_PRINTS);
+  const latestCents = cents[cents.length - 1];
+  return {
+    average: averageCents / 100,
+    latest: latestCents / 100,
+    delta: (latestCents - averageCents) / 100,
+  };
+}
+
+/** "4-week average $18.10; this print is $0.26 above it." */
+export function formatFourWeekAverage(avg: FourWeekAverage): string {
+  const head = `4-week average $${avg.average.toFixed(2)}`;
+  if (avg.delta === 0) return `${head}; this print is flat to it.`;
+  const side = avg.delta > 0 ? "above" : "below";
+  return `${head}; this print is $${Math.abs(avg.delta).toFixed(2)} ${side} it.`;
+}
+
+export interface MomentumReadout {
+  streakLine: string | null;
+  averageLine: string | null;
+}
+
+/** On-page Momentum copy. Same strings the city FAQ answer uses. */
+export function buildMomentumReadout(
+  history: readonly SnapshotLike[] | null | undefined,
+): MomentumReadout {
+  const streak = buildPrintStreak(history);
+  const average = buildFourWeekAverage(history);
+  return {
+    streakLine: streak ? formatPrintStreak(streak) : null,
+    averageLine: average ? formatFourWeekAverage(average) : null,
+  };
+}
+
+/**
+ * FAQ answer for the city's current streak and, once four prints exist,
+ * the 4-week average. Null when there is no streak to report.
+ */
+export function buildCityMomentumFaq(
+  cityName: string,
+  history: readonly SnapshotLike[] | null | undefined,
+): { q: string; a: string } | null {
+  const { streakLine, averageLine } = buildMomentumReadout(history);
+  if (!streakLine) return null;
+  const a = averageLine ? `${streakLine}. ${averageLine}` : `${streakLine}.`;
+  return {
+    q: `Is ${cityName}'s Burger Price Index trending up or down?`,
+    a,
+  };
+}
+
 /**
  * Prior tracked weeks required before a print can set a record.
  * A new city's first prints are not records.
