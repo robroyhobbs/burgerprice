@@ -35,9 +35,13 @@ import {
   buildPurchasingPowerBoard,
   buildPurchasingPowerBoardFaq,
   type PowerCity,
-  type PurchasingPowerFaq,
 } from "@/lib/purchasing-power-rank";
 import { PurchasingPowerBoard } from "@/components/purchasing-power-board";
+import { MomentumBoard } from "@/components/momentum-board";
+import {
+  buildMomentumBoard,
+  buildMomentumBoardFaq,
+} from "@/lib/momentum-board";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -117,14 +121,40 @@ function rankCities(cities: CityDashboardData[]): RankedCity[] {
     });
 }
 
-type FaqItem = { q: string; a: string };
+type FaqItem = {
+  q: string;
+  a: string;
+  /** Set when the visible answer should link a phrase. JSON-LD keeps `a` plain. */
+  href?: string;
+  linkLabel?: string;
+};
 
-function rankingsFaqItems(power: PurchasingPowerFaq | null): FaqItem[] {
-  if (!power) return FAQ_ITEMS;
+function rankingsFaqItems(extras: readonly (FaqItem | null)[]): FaqItem[] {
   const items = [...FAQ_ITEMS];
   const dig = items.findIndex((item) => item.q.startsWith("Where can I dig"));
-  items.splice(dig === -1 ? items.length : dig, 0, power);
+  const insertAt = dig === -1 ? items.length : dig;
+  const extra = extras.filter((item): item is FaqItem => item != null);
+  items.splice(insertAt, 0, ...extra);
   return items;
+}
+
+function FaqAnswer({ item }: { item: FaqItem }) {
+  const { a, href, linkLabel } = item;
+  if (!href || !linkLabel) return a;
+  const at = a.indexOf(linkLabel);
+  if (at < 0) return a;
+  return (
+    <>
+      {a.slice(0, at)}
+      <Link
+        href={href}
+        className="text-ketchup dark:text-mustard hover:underline"
+      >
+        {linkLabel}
+      </Link>
+      {a.slice(at + linkLabel.length)}
+    </>
+  );
 }
 
 function buildJsonLd(
@@ -248,7 +278,18 @@ export default async function RankingsPage() {
     weekOf: c.currentSnapshot?.week_of ?? null,
   }));
   const powerBoard = buildPurchasingPowerBoard(powerCities, { weekOf });
-  const faqItems = rankingsFaqItems(buildPurchasingPowerBoardFaq(powerBoard));
+  const momentumBoard = buildMomentumBoard(
+    cities.map((c) => ({
+      slug: c.city.slug,
+      name: c.city.name,
+      state: c.city.state,
+      history: c.history,
+    })),
+  );
+  const faqItems = rankingsFaqItems([
+    buildPurchasingPowerBoardFaq(powerBoard),
+    buildMomentumBoardFaq(momentumBoard),
+  ]);
 
   const jsonLd = buildJsonLd(ranked, weekOf, faqItems);
   const natUp = nationalChange !== null && nationalChange > 0;
@@ -455,6 +496,8 @@ export default async function RankingsPage() {
 
         <PurchasingPowerBoard rows={powerBoard} />
 
+        <MomentumBoard rows={momentumBoard} />
+
         {/* FAQ */}
         <section className="max-w-7xl mx-auto px-6 py-10">
           <h2 className="font-headline text-2xl text-ketchup dark:text-mustard mb-6">
@@ -473,7 +516,7 @@ export default async function RankingsPage() {
                   </span>
                 </summary>
                 <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                  {item.a}
+                  <FaqAnswer item={item} />
                 </p>
               </details>
             ))}
